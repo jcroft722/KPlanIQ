@@ -1,0 +1,30 @@
+.file-upload {
+  margin: 20px;
+}
+
+.dropzone {
+  border: 2px dashed #cccccc;
+  border-radius: 4px;
+  padding: 20px;
+  text-align: center;
+  background: #fafafa;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.dropzone.active {
+  border-color: #2196f3;
+  background: #e3f2fd;
+}
+
+.dropzone p {
+  margin: 0;
+  padding: 10px;
+  color: #666;
+}
+
+.file-types {
+  font-size: 0.9em;
+  color: #999;
+  margin-top: 10px;
+} 

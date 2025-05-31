@@ -1,0 +1,2568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>401(k) Compliance Intake Form - v0.3</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc; /* Tailwind's slate-50 */
+            color: #1e293b; /* Tailwind's slate-800 */
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .questionnaire-header {
+            background: linear-gradient(135deg, #1e40af 0%, #3730a3 100%); /* Tailwind's blue-800 to indigo-800 */
+            color: white;
+            padding: 32px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        
+        .questionnaire-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .questionnaire-subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            font-style: italic;
+        }
+        
+        .progress-bar {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px; /* Reduced margin */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .progress-text {
+            font-weight: 600;
+            color: #374151; /* Tailwind's gray-700 */
+        }
+        
+        .progress-percentage {
+            font-size: 14px;
+            color: #6b7280; /* Tailwind's gray-500 */
+        }
+        
+        .progress-track {
+            height: 8px;
+            background: #e5e7eb; /* Tailwind's gray-200 */
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #1d4ed8); /* Tailwind's blue-500 to blue-700 */
+            transition: width 0.3s ease;
+            width: 0%; /* Start at 0 */
+        }
+
+        .validation-summary {
+            background-color: #fef2f2; /* Tailwind's red-50 */
+            color: #b91c1c; /* Tailwind's red-700 */
+            border: 1px solid #fecaca; /* Tailwind's red-300 */
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            display: none; /* Hidden by default */
+        }
+        
+        .section-nav {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+            padding-bottom: 8px; /* For scrollbar visibility if needed */
+        }
+        
+        .section-tab {
+            padding: 12px 16px;
+            background: white;
+            border: 2px solid #e5e7eb; /* Tailwind's gray-200 */
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 13px;
+            white-space: nowrap;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 160px; /* Adjusted for potentially longer text */
+            justify-content: center;
+            text-align: center;
+        }
+        
+        .section-tab:hover {
+            border-color: #d1d5db; /* Tailwind's gray-300 */
+            background: #f9fafb; /* Tailwind's gray-50 */
+        }
+        
+        .section-tab.active {
+            border-color: #3b82f6; /* Tailwind's blue-500 */
+            background: #eff6ff; /* Tailwind's blue-50 */
+            color: #1d4ed8; /* Tailwind's blue-700 */
+        }
+        
+        .section-tab.completed .tab-icon {
+            color: #10b981; /* Tailwind's green-500 */
+        }
+        .section-tab.completed {
+             border-color: #10b981; /* Tailwind's green-500 */
+             background: #d1fae5; /* Tailwind's green-100 */
+             color: #065f46; /* Tailwind's green-800 */
+        }
+        
+        .section-content {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: none;
+        }
+        
+        .section-content.active {
+            display: block;
+        }
+        
+        .section-header {
+            background: #f8fafc; /* Tailwind's slate-50 */
+            padding: 24px;
+            border-bottom: 1px solid #e5e7eb; /* Tailwind's gray-200 */
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-description {
+            color: #6b7280; /* Tailwind's gray-500 */
+            font-size: 14px;
+        }
+        
+        .form-content {
+            padding: 24px;
+        }
+        
+        .question-group {
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid #f1f5f9; /* Tailwind's slate-100 */
+        }
+        
+        .question-group:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .question-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #374151; /* Tailwind's gray-700 */
+            margin-bottom: 12px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        
+        .required-indicator {
+            color: #ef4444; /* Tailwind's red-500 */
+            font-size: 14px;
+            margin-top: 1px;
+        }
+        
+        .question-help {
+            font-size: 13px;
+            color: #6b7280; /* Tailwind's gray-500 */
+            margin-bottom: 16px;
+            padding: 12px;
+            background: #f8fafc; /* Tailwind's slate-50 */
+            border-radius: 6px;
+            border-left: 3px solid #3b82f6; /* Tailwind's blue-500 */
+        }
+        
+        .form-input, .form-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb; /* Tailwind's gray-200 */
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        
+        .form-textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        .form-input:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #3b82f6; /* Tailwind's blue-500 */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .form-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb; /* Tailwind's gray-200 */
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        
+        .form-select:focus {
+            outline: none;
+            border-color: #3b82f6; /* Tailwind's blue-500 */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .radio-group, .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .radio-option, .checkbox-option {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            cursor: pointer;
+            padding: 14px;
+            border: 2px solid #e5e7eb; /* Tailwind's gray-200 */
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        
+        .radio-option:hover, .checkbox-option:hover {
+            border-color: #d1d5db; /* Tailwind's gray-300 */
+            background: #f9fafb; /* Tailwind's gray-50 */
+        }
+        
+        .radio-option.selected {
+            border-color: #3b82f6; /* Tailwind's blue-500 */
+            background: #eff6ff; /* Tailwind's blue-50 */
+        }
+        
+        .checkbox-option.selected {
+            border-color: #10b981; /* Tailwind's green-500 */
+            background: #ecfdf5; /* Tailwind's green-50 */
+        }
+        
+        .radio, .checkbox {
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+        
+        .input-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .input-group.single {
+            grid-template-columns: 1fr;
+        }
+        
+        .input-with-label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .input-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #374151; /* Tailwind's gray-700 */
+        }
+        
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        
+        .alert-info {
+            background: #eff6ff; /* Tailwind's blue-50 */
+            border: 2px solid #bfdbfe; /* Tailwind's blue-200 */
+            color: #1e40af; /* Tailwind's blue-800 */
+        }
+        
+        .alert-warning {
+            background: #fffbeb; /* Tailwind's amber-50 */
+            border: 2px solid #fed7aa; /* Tailwind's amber-300 */
+            color: #92400e; /* Tailwind's amber-800 */
+        }
+        
+        .alert-success {
+            background: #ecfdf5; /* Tailwind's green-50 */
+            border: 2px solid #a7f3d0; /* Tailwind's green-200 */
+            color: #065f46; /* Tailwind's green-800 */
+        }
+        
+        .navigation-buttons {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e5e7eb; /* Tailwind's gray-200 */
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        
+        .btn-primary {
+            background: #3b82f6; /* Tailwind's blue-500 */
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb; /* Tailwind's blue-600 */
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: #6b7280; /* Tailwind's gray-500 */
+            border: 2px solid #e5e7eb; /* Tailwind's gray-200 */
+        }
+        
+        .btn-secondary:hover {
+            border-color: #d1d5db; /* Tailwind's gray-300 */
+            background: #f9fafb; /* Tailwind's gray-50 */
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .completion-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #059669; /* Tailwind's green-600 */
+            font-weight: 500;
+        }
+        
+        .dependent-questions {
+            margin-left: 24px;
+            margin-top: 16px;
+            padding-left: 16px;
+            border-left: 2px solid #e5e7eb; /* Tailwind's gray-200 */
+            display: none;
+        }
+        
+        .dependent-questions.show {
+            display: block;
+        }
+        
+        .form-input.error,
+        .form-select.error, /* Added for select */
+        .radio-group.error .radio-option, /* Target options within group */
+        .checkbox-group.error .checkbox-option { /* Target options within group */
+            border-color: #ef4444 !important; /* Tailwind's red-500 */
+        }
+        .form-input.error, .form-textarea.error {
+             background-color: #fef2f2 !important; /* Tailwind's red-50 */
+        }
+        .radio-group.error .radio-option,
+        .checkbox-group.error .checkbox-option {
+            background-color: #fef2f2 !important; /* Tailwind's red-50 */
+        }
+        .error-message {
+            color: #ef4444; /* Tailwind's red-500 */
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            margin-top: 16px;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+            font-size: 13px;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border: 1px solid #e5e7eb; /* Tailwind's gray-200 */
+            vertical-align: top;
+        }
+        
+        .data-table th {
+            background: #f8fafc; /* Tailwind's slate-50 */
+            font-weight: 600;
+            color: #374151; /* Tailwind's gray-700 */
+        }
+        
+        .data-table input,
+        .data-table select {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #d1d5db; /* Tailwind's gray-300 */
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+        
+        .data-table input:focus,
+        .data-table select:focus {
+            outline: none;
+            border-color: #3b82f6; /* Tailwind's blue-500 */
+        }
+
+        .data-table .delete-row-btn {
+            padding: 4px 8px;
+            font-size: 12px;
+            background-color: #fee2e2; /* Tailwind's red-100 */
+            color: #b91c1c; /* Tailwind's red-700 */
+            border: 1px solid #fecaca; /* Tailwind's red-300 */
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .data-table .delete-row-btn:hover {
+            background-color: #fecaca; /* Tailwind's red-200 */
+        }
+        
+        .add-row-btn {
+            margin-top: 12px;
+            padding: 8px 16px;
+            background: #f3f4f6; /* Tailwind's gray-100 */
+            border: 1px solid #d1d5db; /* Tailwind's gray-300 */
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #374151; /* Tailwind's gray-700 */
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        
+        .add-row-btn:hover {
+            background: #e5e7eb; /* Tailwind's gray-200 */
+        }
+        
+        .summary-card {
+            background: #f8fafc; /* Tailwind's slate-50 */
+            border: 1px solid #e2e8f0; /* Tailwind's slate-200 */
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .summary-title {
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #374151; /* Tailwind's gray-700 */
+            font-size: 16px;
+        }
+        
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            margin-bottom: 6px;
+            padding: 4px 0;
+        }
+        
+        .summary-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .summary-item span:first-child {
+            color: #6b7280; /* Tailwind's gray-500 */
+        }
+        
+        .summary-item span:last-child {
+            color: #374151; /* Tailwind's gray-700 */
+            font-weight: 500;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+            
+            .questionnaire-header {
+                padding: 20px;
+            }
+            
+            .questionnaire-title {
+                font-size: 24px;
+            }
+            
+            .section-nav {
+                flex-wrap: wrap; /* Allow tabs to wrap on smaller screens */
+            }
+            
+            .section-tab {
+                min-width: 120px; /* Adjust for smaller screens */
+                font-size: 12px;
+                padding: 10px 12px;
+                flex-grow: 1; /* Allow tabs to grow and fill space if wrapping */
+            }
+            
+            .input-group {
+                grid-template-columns: 1fr; /* Stack inputs on smaller screens */
+                gap: 12px;
+            }
+            
+            .form-content {
+                padding: 16px;
+            }
+            
+            .navigation-buttons {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+            
+            .table-container {
+                font-size: 12px;
+            }
+        }
+        
+        /* Fix for nested dependent questions */
+        .dependent-questions .question-title {
+            font-size: 15px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        
+        /* Better spacing for form elements */
+        .radio-option > div,
+        .checkbox-option > div {
+            flex: 1;
+        }
+        
+        .radio-option strong,
+        .checkbox-option strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        /* Improved table styling */
+        .data-table tbody tr:nth-child(even) {
+            background-color: #f9fafb; /* Tailwind's gray-50 */
+        }
+        
+        .data-table tbody tr:hover {
+            background-color: #f3f4f6; /* Tailwind's gray-100 */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="questionnaire-header">
+            <h1 class="questionnaire-title">401(k) Compliance Intake Form</h1>
+            <p class="questionnaire-subtitle">"Help us accurately test your plan for compliance and prepare your Form 5500 filings."</p>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-header">
+                <span class="progress-text">Questionnaire Progress</span>
+                <span class="progress-percentage">1 of 6 sections completed (17%)</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill"></div>
+            </div>
+        </div>
+        
+        <div class="validation-summary" id="validation-summary-message">
+            Please complete all required fields in the current section before proceeding.
+        </div>
+
+
+        <div class="section-nav">
+            <div class="section-tab active" onclick="showSection(0)">
+                <span class="tab-icon">🏢</span>
+                <span class="tab-text">Business & Ownership</span>
+            </div>
+            <div class="section-tab" onclick="showSection(1)">
+                <span class="tab-icon">👥</span>
+                <span class="tab-text">Employee Demographics</span>
+            </div>
+            <div class="section-tab" onclick="showSection(2)">
+                <span class="tab-icon">💰</span>
+                <span class="tab-text">Compensation & Contributions</span>
+            </div>
+            <div class="section-tab" onclick="showSection(3)">
+                <span class="tab-icon">⚙️</span>
+                <span class="tab-text">Plan Design & Testing</span>
+            </div>
+            <div class="section-tab" onclick="showSection(4)">
+                <span class="tab-icon">📋</span>
+                <span class="tab-text">Plan Operations & Changes</span>
+            </div>
+            <div class="section-tab" onclick="showSection(5)">
+                <span class="tab-icon">📊</span>
+                <span class="tab-text">Financial Data & Form 5500</span>
+            </div>
+        </div>
+
+        <div class="section-content active" id="section-0">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="tab-icon">🏢</span> Business & Ownership
+                </h2>
+                <p class="section-description">Determine controlled group status and related company relationships that affect compliance testing.</p>
+            </div>
+
+            <div class="form-content">
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Do you own or have ownership interest in any other business?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Ownership interests determine controlled group status, which affects which employees must be included in compliance testing.
+                    </div>
+                    <div class="radio-group" data-group-name="other-business">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('ownership-details', false)">
+                            <input type="radio" name="other-business" value="no" class="radio" data-required="true">
+                            <span>No</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('ownership-details', true)">
+                            <input type="radio" name="other-business" value="yes" class="radio" data-required="true">
+                            <span>Yes</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="ownership-details">
+                        <h4 class="question-title">
+                            List business names and ownership percentages:
+                        </h4>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Business Name</th>
+                                        <th>EIN</th>
+                                        <th>Ownership %</th>
+                                        <th>Relationship</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="other-businesses-table">
+                                    <tr>
+                                        <td><input type="text" placeholder="ABC Corp" data-required="false"></td>
+                                        <td><input type="text" placeholder="12-3456789" data-required="false"></td>
+                                        <td><input type="number" min="0" max="100" placeholder="50" data-required="false"></td>
+                                        <td>
+                                            <select class="form-select" data-required="false">
+                                                <option value="">Select Relationship</option>
+                                                <option>Parent Company</option>
+                                                <option>Subsidiary</option>
+                                                <option>Sister Company</option>
+                                                <option>Partnership</option>
+                                                <option>Other</option>
+                                            </select>
+                                        </td>
+                                        <td><button type="button" class="delete-row-btn" onclick="deleteRow(this)">Delete</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <button type="button" class="add-row-btn" onclick="addOtherBusinessRow()">+ Add Another Business</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Do you share employees, management, or services with any other company?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Shared employees or services can create affiliated service group relationships affecting compliance testing.
+                    </div>
+                    <div class="radio-group" data-group-name="shared-services">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('shared-services-details', false)">
+                            <input type="radio" name="shared-services" value="no" class="radio" data-required="true">
+                            <span>No</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('shared-services-details', true)">
+                            <input type="radio" name="shared-services" value="yes" class="radio" data-required="true">
+                            <span>Yes</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="shared-services-details">
+                        <div class="input-with-label">
+                            <label class="input-label">Describe the relationship:</label>
+                            <textarea class="form-textarea" placeholder="Example: We share IT services with XYZ Corp, or ABC Corp provides management services to us..." data-required="false"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Has your company merged with, acquired, or sold any part of the business this year?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Corporate transactions can trigger special compliance testing requirements and affect participant transfers.
+                    </div>
+                    <div class="radio-group" data-group-name="corporate-transaction">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('corporate-transaction-details', false)">
+                            <input type="radio" name="corporate-transaction" value="no" class="radio" data-required="true">
+                            <span>No</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('corporate-transaction-details', true)">
+                            <input type="radio" name="corporate-transaction" value="yes" class="radio" data-required="true">
+                            <span>Yes</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="corporate-transaction-details">
+                        <div class="input-group">
+                            <div class="input-with-label">
+                                <label class="input-label">Effective Date</label>
+                                <input type="date" class="form-input" data-required="false">
+                            </div>
+                            <div class="input-with-label">
+                                <label class="input-label">Transaction Type</label>
+                                <select class="form-select" data-required="false">
+                                    <option value="">Select Type</option>
+                                    <option>Merger</option>
+                                    <option>Acquisition</option>
+                                    <option>Divestiture</option>
+                                    <option>Asset Sale</option>
+                                    <option>Spin-off</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">Transaction Details</label>
+                            <textarea class="form-textarea" placeholder="Provide details about the transaction, including company names, employee transfers, etc." data-required="false"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Is this plan part of a MEP, PEO, or PEP?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Multiple Employer Plans (MEP), Professional Employer Organizations (PEO), and Pooled Employer Plans (PEP) have special reporting requirements.
+                    </div>
+                    <div class="radio-group" data-group-name="multi-employer">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('multi-employer-details', false)">
+                            <input type="radio" name="multi-employer" value="no" class="radio" data-required="true">
+                            <span>No - Single employer plan</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('multi-employer-details', true)">
+                            <input type="radio" name="multi-employer" value="mep" class="radio" data-required="true">
+                            <span>MEP (Multiple Employer Plan)</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('multi-employer-details', true)">
+                            <input type="radio" name="multi-employer" value="pep" class="radio" data-required="true">
+                            <span>PEP (Pooled Employer Plan)</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('multi-employer-details', true)">
+                            <input type="radio" name="multi-employer" value="peo" class="radio" data-required="true">
+                            <span>PEO (Professional Employer Organization)</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="multi-employer-details">
+                        <div class="input-with-label">
+                            <label class="input-label">Lead Employer or Pooled Plan Provider (PPP)</label>
+                            <input type="text" class="form-input" placeholder="Company name and EIN" data-required="false">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="navigation-buttons">
+                    <button type="button" class="btn btn-secondary" disabled>
+                        ← Previous
+                    </button>
+                    <div class="completion-status" id="completion-status-0" style="display:none;">
+                        <span>✓</span>
+                        Section Complete
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="nextSection()">
+                        Next: Employee Demographics →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-content" id="section-1">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="tab-icon">👥</span> Employee Demographics
+                </h2>
+                <p class="section-description">Identify key employees and ownership relationships that affect HCE determination and testing.</p>
+            </div>
+
+            <div class="form-content">
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Are there any employees who own more than 5% of the business (directly or through family)?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        5% owners are automatically considered Highly Compensated Employees (HCEs) regardless of compensation level.
+                    </div>
+                    <div class="radio-group" data-group-name="five-percent-owners">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('key-employees-details', false)">
+                            <input type="radio" name="five-percent-owners" value="no" class="radio" data-required="true">
+                            <span>No</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('key-employees-details', true)">
+                            <input type="radio" name="five-percent-owners" value="yes" class="radio" data-required="true">
+                            <span>Yes</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="key-employees-details">
+                        <h4 class="question-title">
+                            Identify 5% owners by name or Employee ID and ownership percentage:
+                        </h4>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Employee Name/ID</th>
+                                        <th>Ownership %</th>
+                                        <th>Relationship to Business</th>
+                                        <th>Family Attribution</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="owners-table">
+                                    <tr>
+                                        <td><input type="text" placeholder="John Smith / EMP001" data-required="false"></td>
+                                        <td><input type="number" min="5" max="100" placeholder="15" data-required="false"></td>
+                                        <td>
+                                            <select class="form-select" data-required="false">
+                                                <option value="">Select Relationship</option>
+                                                <option>Direct Owner</option>
+                                                <option>CEO/President</option>
+                                                <option>Partner</option>
+                                                <option>Family Member</option>
+                                            </select>
+                                        </td>
+                                        <td><input type="text" placeholder="N/A or spouse of owner" data-required="false"></td>
+                                        <td><button type="button" class="delete-row-btn" onclick="deleteRow(this)">Delete</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <button type="button" class="add-row-btn" onclick="addOwnerRow()">+ Add Another Owner</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Are any employees designated as officers, partners, or directors?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Officers and key employees may have special status for compliance testing and top-heavy determinations.
+                    </div>
+                    <div class="radio-group" data-group-name="officers">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('officers-details', false)">
+                            <input type="radio" name="officers" value="no" class="radio" data-required="true">
+                            <span>No</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('officers-details', true)">
+                            <input type="radio" name="officers" value="yes" class="radio" data-required="true">
+                            <span>Yes</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="officers-details">
+                         <h4 class="question-title">
+                            List officers, partners, or directors:
+                        </h4>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Employee Name/ID</th>
+                                        <th>Title/Role</th>
+                                        <th>Annual Compensation</th>
+                                        <th>Plan Participant</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="officers-table">
+                                    <tr>
+                                        <td><input type="text" placeholder="Jane Doe / EMP002" data-required="false"></td>
+                                        <td>
+                                            <select class="form-select" data-required="false">
+                                                <option value="">Select Title/Role</option>
+                                                <option>CEO</option>
+                                                <option>CFO</option>
+                                                <option>President</option>
+                                                <option>Vice President</option>
+                                                <option>Secretary</option>
+                                                <option>Director</option>
+                                                <option>Partner</option>
+                                            </select>
+                                        </td>
+                                        <td><input type="text" placeholder="$125,000" data-required="false"></td>
+                                        <td>
+                                            <select class="form-select" data-required="false">
+                                                <option value="">Select Status</option>
+                                                <option>Yes</option>
+                                                <option>No</option>
+                                                <option>Excluded</option>
+                                            </select>
+                                        </td>
+                                        <td><button type="button" class="delete-row-btn" onclick="deleteRow(this)">Delete</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <button type="button" class="add-row-btn" onclick="addOfficerRow()">+ Add Another Officer</button>
+                        </div>
+                    </div>
+                </div>
+                 <div class="question-group">
+                    <h3 class="question-title">
+                        Do you employ leased or shared employees from a staffing agency or PEO?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Leased employees may need to be included in compliance testing depending on the arrangement.
+                    </div>
+                    <div class="radio-group" data-group-name="leased-employees">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('leased-employees-details', false)">
+                            <input type="radio" name="leased-employees" value="no" class="radio" data-required="true">
+                            <span>No</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('leased-employees-details', true)">
+                            <input type="radio" name="leased-employees" value="yes" class="radio" data-required="true">
+                            <span>Yes</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="leased-employees-details">
+                        <div class="input-group">
+                            <div class="input-with-label">
+                                <label class="input-label">Are they eligible for the plan?</label>
+                                <div class="radio-group" data-group-name="leased-eligible">
+                                    <label class="radio-option" onclick="selectRadio(this)">
+                                        <input type="radio" name="leased-eligible" value="yes" class="radio" data-required="false">
+                                        <span>Yes</span>
+                                    </label>
+                                    <label class="radio-option" onclick="selectRadio(this)">
+                                        <input type="radio" name="leased-eligible" value="no" class="radio" data-required="false">
+                                        <span>No</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="input-with-label">
+                                <label class="input-label">Number of Leased Employees</label>
+                                <input type="number" class="form-input" min="0" placeholder="5" data-required="false">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Do any employees work fewer than 1,000 hours per year?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Part-time employees may be excluded from the plan, but this affects participant counts and testing.
+                    </div>
+                    <div class="radio-group" data-group-name="part-time">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('part-time-details', false)">
+                            <input type="radio" name="part-time" value="no" class="radio" data-required="true">
+                            <span>No</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('part-time-details', true)">
+                            <input type="radio" name="part-time" value="yes" class="radio" data-required="true">
+                            <span>Yes</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="part-time-details">
+                        <div class="input-group">
+                            <div class="input-with-label">
+                                <label class="input-label">Do you exclude them from the plan?</label>
+                                <div class="radio-group" data-group-name="exclude-part-time">
+                                    <label class="radio-option" onclick="selectRadio(this)">
+                                        <input type="radio" name="exclude-part-time" value="yes" class="radio" data-required="false">
+                                        <span>Yes</span>
+                                    </label>
+                                    <label class="radio-option" onclick="selectRadio(this)">
+                                        <input type="radio" name="exclude-part-time" value="no" class="radio" data-required="false">
+                                        <span>No</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="input-with-label">
+                                <label class="input-label">Number of Part-Time Employees</label>
+                                <input type="number" class="form-input" min="0" placeholder="12" data-required="false">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="navigation-buttons">
+                    <button type="button" class="btn btn-secondary" onclick="prevSection()">
+                        ← Previous: Business & Ownership
+                    </button>
+                     <div class="completion-status" id="completion-status-1" style="display:none;">
+                        <span>✓</span>
+                        Section Complete
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="nextSection()">
+                        Next: Compensation & Contributions →
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section-content" id="section-2">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="tab-icon">💰</span> Compensation & Contributions
+                </h2>
+                <p class="section-description">Define contribution formulas, compensation definitions, and benefit structures</p>
+            </div>
+
+            <div class="form-content">
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Which types of employer contributions do you make?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Different contribution types have different testing requirements and vesting rules.
+                    </div>
+                    <div class="checkbox-group" data-group-name="contribution-types">
+                        <label class="checkbox-option" onclick="toggleCheckbox(this); toggleDependent('matching-formula-details', this.querySelector('input').checked)">
+                            <input type="checkbox" name="contribution-types" value="matching" class="checkbox" data-required="true"> <span>Matching contributions</span>
+                        </label>
+                        <label class="checkbox-option" onclick="toggleCheckbox(this); toggleDependent('profit-sharing-formula-details', this.querySelector('input').checked)">
+                            <input type="checkbox" name="contribution-types" value="profit-sharing" class="checkbox" data-required="true">
+                            <span>Profit sharing contributions</span>
+                        </label>
+                        <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                            <input type="checkbox" name="contribution-types" value="none" class="checkbox" data-required="true">
+                            <span>None - employee contributions only</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="matching-formula-details">
+                        <h4 class="question-title">
+                            Matching Formula Configuration:
+                        </h4>
+                        <div class="radio-group" data-group-name="match-type">
+                            <label class="radio-option" onclick="selectRadio(this)">
+                                <input type="radio" name="match-type" value="discretionary" class="radio" data-required="false">
+                                <span>Discretionary matching (varies by year)</span>
+                            </label>
+                            <label class="radio-option" onclick="selectRadio(this)">
+                                <input type="radio" name="match-type" value="fixed" class="radio" data-required="false">
+                                <span>Fixed formula matching</span>
+                            </label>
+                            <label class="radio-option" onclick="selectRadio(this)">
+                                <input type="radio" name="match-type" value="tiered" class="radio" data-required="false">
+                                <span>Tiered by employee group</span>
+                            </label>
+                        </div>
+
+                        <div class="input-group">
+                            <div class="input-with-label">
+                                <label class="input-label">Match Percentage</label>
+                                <input type="number" class="form-input" min="0" max="100" step="0.1" value="100" onchange="updateMatchFormula()" data-required="false">
+                            </div>
+                            <div class="input-with-label">
+                                <label class="input-label">Up to % of Compensation</label>
+                                <input type="number" class="form-input" min="0" max="100" step="0.1" value="4" onchange="updateMatchFormula()" data-required="false">
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <span>💡</span>
+                            <div id="match-formula-display">Current Formula: 100% match on first 4% of compensation contributed</div>
+                        </div>
+                    </div>
+
+                    <div class="dependent-questions" id="profit-sharing-formula-details">
+                        <h4 class="question-title">
+                            Profit Sharing Formula:
+                        </h4>
+                        <div class="input-group">
+                            <div class="input-with-label">
+                                <label class="input-label">Allocation Method</label>
+                                <select class="form-select" data-required="false">
+                                    <option value="">Select Method</option>
+                                    <option>Pro-rata by compensation</option>
+                                    <option>Uniform percentage</option>
+                                    <option>Integrated with Social Security</option>
+                                    <option>Cross-tested (age-weighted)</option>
+                                </select>
+                            </div>
+                            <div class="input-with-label">
+                                <label class="input-label">Target Contribution %</label>
+                                <input type="number" class="form-input" min="0" max="25" step="0.1" placeholder="3.0" data-required="false">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Are there eligibility or vesting conditions tied to employer contributions?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Eligibility and vesting conditions affect when employees receive contributions and can impact testing.
+                    </div>
+                    <div class="radio-group" data-group-name="contribution-conditions">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('contribution-conditions-details', false)">
+                            <input type="radio" name="contribution-conditions" value="no" class="radio" data-required="true">
+                            <span>No - same as plan eligibility</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('contribution-conditions-details', true)">
+                            <input type="radio" name="contribution-conditions" value="yes" class="radio" data-required="true">
+                            <span>Yes - additional requirements apply</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="contribution-conditions-details">
+                        <div class="checkbox-group" data-group-name="conditions-list">
+                            <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="conditions-list" value="service-requirement" class="checkbox" data-required="false">
+                                <span>1-year service requirement</span>
+                            </label>
+                            <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="conditions-list" value="hours-requirement" class="checkbox" data-required="false">
+                                <span>1,000-hour rule</span>
+                            </label>
+                            <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="conditions-list" value="last-day-requirement" class="checkbox" data-required="false">
+                                <span>Last day of plan year employment</span>
+                            </label>
+                            <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="conditions-list" value="minimum-hours" class="checkbox" data-required="false">
+                                <span>Minimum hours per pay period</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Are different benefits available to different employee groups?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Different benefit structures may require separate testing or additional compliance requirements.
+                    </div>
+                    <div class="radio-group" data-group-name="benefit-groups">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('benefit-groups-details', false)">
+                            <input type="radio" name="benefit-groups" value="no" class="radio" data-required="true">
+                            <span>No - uniform benefits for all eligible employees</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('benefit-groups-details', true)">
+                            <input type="radio" name="benefit-groups" value="yes" class="radio" data-required="true">
+                            <span>Yes - different groups have different benefits</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="benefit-groups-details">
+                        <div class="input-with-label">
+                            <label class="input-label">Describe which groups and differences:</label>
+                            <textarea class="form-textarea" placeholder="Example: Union employees have 6% match, non-union have 4% match. Executives have additional profit sharing..." data-required="false"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Do you include bonuses or other special pay in plan compensation?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Compensation definition affects contribution calculations and must be consistently applied.
+                    </div>
+                    <div class="radio-group" data-group-name="special-compensation">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('special-compensation-details', false)">
+                            <input type="radio" name="special-compensation" value="no" class="radio" data-required="true">
+                            <span>No - base salary/wages only</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('special-compensation-details', true)">
+                            <input type="radio" name="special-compensation" value="yes" class="radio" data-required="true">
+                            <span>Yes - additional compensation included</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="special-compensation-details">
+                         <div class="checkbox-group" data-group-name="comp-types-list">
+                            <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="comp-types-list" value="bonuses" class="checkbox" data-required="false">
+                                <span>Bonuses</span>
+                            </label>
+                            <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="comp-types-list" value="commissions" class="checkbox" data-required="false">
+                                <span>Commissions</span>
+                            </label>
+                            <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="comp-types-list" value="overtime" class="checkbox" data-required="false">
+                                <span>Overtime pay</span>
+                            </label>
+                            <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="comp-types-list" value="fringe-benefits" class="checkbox" data-required="false">
+                                <span>Fringe benefits</span>
+                            </label>
+                            <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="comp-types-list" value="relocation" class="checkbox" data-required="false">
+                                <span>Relocation payments</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button type="button" class="btn btn-secondary" onclick="prevSection()">
+                        ← Previous: Employee Demographics
+                    </button>
+                     <div class="completion-status" id="completion-status-2" style="display:none;">
+                        <span>✓</span>
+                        Section Complete
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="nextSection()">
+                        Next: Plan Design & Testing →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-content" id="section-3">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="tab-icon">⚙️</span> Plan Design & Testing
+                </h2>
+                <p class="section-description">Configure testing methods, safe harbor elections, and auto-enrollment features</p>
+            </div>
+
+            <div class="form-content">
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Is this plan designed as a Safe Harbor 401(k)?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Safe Harbor plans are exempt from ADP/ACP testing but must meet specific contribution and notice requirements.
+                    </div>
+                    <div class="radio-group" data-group-name="safe-harbor">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('safe-harbor-config-details', false)">
+                            <input type="radio" name="safe-harbor" value="no" class="radio" data-required="true">
+                            <span>No - traditional 401(k) plan</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('safe-harbor-config-details', true)">
+                            <input type="radio" name="safe-harbor" value="basic-match" class="radio" data-required="true">
+                            <span>Yes - Safe Harbor with basic matching</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('safe-harbor-config-details', true)">
+                            <input type="radio" name="safe-harbor" value="enhanced-match" class="radio" data-required="true">
+                            <span>Yes - Safe Harbor with enhanced matching</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('safe-harbor-config-details', true)">
+                            <input type="radio" name="safe-harbor" value="nonelective" class="radio" data-required="true">
+                            <span>Yes - Safe Harbor nonelective contribution</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="safe-harbor-config-details">
+                        <div class="alert alert-success">
+                            <span>✅</span>
+                            <div>
+                                <strong>Safe Harbor Benefits:</strong><br/>
+                                Exempt from ADP/ACP testing, higher contribution limits for HCEs, and no corrective distributions required.
+                            </div>
+                        </div>
+
+                        <h4 class="question-title">
+                            Safe Harbor Contribution Details:
+                        </h4>
+                        <div class="input-group">
+                            <div class="input-with-label">
+                                <label class="input-label">Safe Harbor Match Rate / Nonelective %</label>
+                                <input type="number" class="form-input" min="0" max="100" step="0.1" value="100" placeholder="100" data-required="false">
+                                <span style="font-size: 12px; color: #6b7280;">E.g., 100% on first 3% + 50% on next 2%; or 3% for nonelective.</span>
+                            </div>
+                            <div class="input-with-label">
+                                <label class="input-label">Vesting Schedule</label>
+                                <select class="form-select" data-required="false">
+                                    <option value="">Select Vesting</option>
+                                    <option>Immediate (100%)</option>
+                                    <option>2-year cliff</option>
+                                    <option>6-year graded</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Testing Method Elections (for non-Safe Harbor plans):
+                    </h3>
+                    <div class="question-help">
+                        Testing method elections determine how compliance is calculated and cannot be changed mid-year without IRS consent. This section is only required if not a Safe Harbor plan.
+                    </div>
+                    <div class="input-group">
+                        <div class="input-with-label">
+                            <label class="input-label">ADP Testing Method</label>
+                            <select class="form-select" name="adp-testing-method" data-required="false"> <option value="">Select Method</option>
+                                <option>Prior Year Testing</option>
+                                <option>Current Year Testing</option>
+                            </select>
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">ACP Testing Method</label>
+                            <select class="form-select" name="acp-testing-method" data-required="false">
+                                <option value="">Select Method</option>
+                                <option>Prior Year Testing</option>
+                                <option>Current Year Testing</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="input-group single">
+                        <div class="input-with-label">
+                            <label class="input-label">Compensation Definition for Testing</label>
+                            <select class="form-select" name="comp-definition-testing" data-required="false">
+                                <option value="">Select Definition</option>
+                                <option>IRC Section 414(s) - W-2 wages</option>
+                                <option>IRC Section 415(c)(3) - includes deferrals and benefits</option>
+                                <option>Other (Specify in Plan Document)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Does the plan include automatic enrollment or auto-escalation?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Auto-enrollment features affect participant notices, testing requirements, and Form 5500 reporting.
+                    </div>
+                    <div class="radio-group" data-group-name="auto-enrollment">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('auto-enrollment-config-details', false)">
+                            <input type="radio" name="auto-enrollment" value="no" class="radio" data-required="true">
+                            <span>No automatic enrollment</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('auto-enrollment-config-details', true)">
+                            <input type="radio" name="auto-enrollment" value="eaca" class="radio" data-required="true">
+                            <span>EACA (Eligible Automatic Contribution Arrangement)</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('auto-enrollment-config-details', true)">
+                            <input type="radio" name="auto-enrollment" value="qaca" class="radio" data-required="true">
+                            <span>QACA (Qualified Automatic Contribution Arrangement)</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="auto-enrollment-config-details">
+                        <h4 class="question-title">
+                            Auto-Enrollment Configuration:
+                        </h4>
+                        <div class="input-group">
+                            <div class="input-with-label">
+                                <label class="input-label">Year 1 Default Rate (%)</label>
+                                <input type="number" class="form-input" min="0" max="15" step="0.1" value="3" data-required="false">
+                                <span style="font-size: 12px; color: #6b7280;">Minimum 3% for QACA</span>
+                            </div>
+                            <div class="input-with-label">
+                                <label class="input-label">Year 2 Default Rate (%)</label>
+                                <input type="number" class="form-input" min="0" max="15" step="0.1" value="4" data-required="false">
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <div class="input-with-label">
+                                <label class="input-label">Year 3 Default Rate (%)</label>
+                                <input type="number" class="form-input" min="0" max="15" step="0.1" value="5" data-required="false">
+                            </div>
+                            <div class="input-with-label">
+                                <label class="input-label">Year 4+ Default Rate (%)</label>
+                                <input type="number" class="form-input" min="0" max="15" step="0.1" value="6" data-required="false">
+                                <span style="font-size: 12px; color: #6b7280;">Minimum 6% for QACA after initial period</span>
+                            </div>
+                        </div>
+                        <div class="input-group single">
+                            <div class="input-with-label">
+                                <label class="input-label">Default Investment (QDIA)</label>
+                                <select class="form-select" data-required="false">
+                                    <option value="">Select QDIA</option>
+                                    <option>Target Date Fund</option>
+                                    <option>Balanced Fund</option>
+                                    <option>Stable Value Fund</option>
+                                    <option>Money Market Fund</option>
+                                    <option>Other (Specify)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Vesting Schedule for Employer Contributions:
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Vesting schedules affect forfeitures and must comply with minimum vesting requirements.
+                    </div>
+                    <div class="radio-group" data-group-name="vesting-type">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('vesting-schedule-details', false)">
+                            <input type="radio" name="vesting-type" value="immediate" class="radio" data-required="true">
+                            <span>Immediate (100% vesting)</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('vesting-schedule-details', true)">
+                            <input type="radio" name="vesting-type" value="graded" class="radio" data-required="true">
+                            <span>Graded vesting schedule</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('vesting-schedule-details', true)"> <input type="radio" name="vesting-type" value="cliff" class="radio" data-required="true">
+                            <span>Cliff vesting</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="vesting-schedule-details">
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Years of Service</th>
+                                        <th>Vested Percentage</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Less than 2 years</td>
+                                        <td><input type="number" min="0" max="100" value="0" data-required="false">%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>2 years</td>
+                                        <td><input type="number" min="0" max="100" value="20" data-required="false">%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>3 years</td>
+                                        <td><input type="number" min="0" max="100" value="40" data-required="false">%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>4 years</td>
+                                        <td><input type="number" min="0" max="100" value="60" data-required="false">%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>5 years</td>
+                                        <td><input type="number" min="0" max="100" value="80" data-required="false">%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>6+ years</td>
+                                        <td><input type="number" min="0" max="100" value="100" data-required="false">%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                             <p style="font-size: 12px; color: #6b7280; margin-top: 8px;">Adjust percentages based on your plan's schedule (e.g., for a 3-year cliff, set "Less than 3 years" to 0% and "3 years" to 100%, others N/A or 100%).</p>
+                        </div>
+
+                        <h4 class="question-title" style="margin-top: 20px;">
+                            How are forfeitures handled? <span class="required-indicator">*</span>
+                        </h4>
+                         <div class="radio-group" data-group-name="forfeitures">
+                            <label class="radio-option" onclick="selectRadio(this)">
+                                <input type="radio" name="forfeitures" value="reduce-contributions" class="radio" data-required="false"> <span>Used to reduce employer contributions</span>
+                            </label>
+                            <label class="radio-option" onclick="selectRadio(this)">
+                                <input type="radio" name="forfeitures" value="allocate-participants" class="radio" data-required="false">
+                                <span>Allocated to remaining participant accounts</span>
+                            </label>
+                            <label class="radio-option" onclick="selectRadio(this)">
+                                <input type="radio" name="forfeitures" value="administrative-expenses" class="radio" data-required="false">
+                                <span>Used to pay plan administrative expenses</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button type="button" class="btn btn-secondary" onclick="prevSection()">
+                        ← Previous: Compensation & Contributions
+                    </button>
+                     <div class="completion-status" id="completion-status-3" style="display:none;">
+                        <span>✓</span>
+                        Section Complete
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="nextSection()">
+                        Next: Plan Operations & Changes →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-content" id="section-4">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="tab-icon">📋</span> Plan Operations & Changes
+                </h2>
+                <p class="section-description">Document plan amendments, loans, distributions, and operational events during the year</p>
+            </div>
+
+            <div class="form-content">
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Were there any plan amendments this year?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Plan amendments can affect testing calculations, participant rights, and Form 5500 reporting.
+                    </div>
+                    <div class="radio-group" data-group-name="plan-amendments">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('amendments-details', false)">
+                            <input type="radio" name="plan-amendments" value="no" class="radio" data-required="true">
+                            <span>No plan amendments</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('amendments-details', true)">
+                            <input type="radio" name="plan-amendments" value="yes" class="radio" data-required="true">
+                            <span>Yes, there were plan amendments</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="amendments-details">
+                        <h4 class="question-title">
+                            Amendment Details:
+                        </h4>
+                        <div class="checkbox-group" data-group-name="amendment-types-list">
+                            <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="amendment-types-list" value="contribution-limits" class="checkbox" data-required="false">
+                                <span>Contribution limit changes</span>
+                            </label>
+                            <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="amendment-types-list" value="matching-formula" class="checkbox" data-required="false">
+                                <span>Matching formula modifications</span>
+                            </label>
+                            <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="amendment-types-list" value="eligibility-changes" class="checkbox" data-required="false">
+                                <span>Eligibility requirement changes</span>
+                            </label>
+                            <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="amendment-types-list" value="vesting-changes" class="checkbox" data-required="false">
+                                <span>Vesting schedule modifications</span>
+                            </label>
+                            <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="amendment-types-list" value="safe-harbor" class="checkbox" data-required="false">
+                                <span>Safe Harbor election changes</span>
+                            </label>
+                             <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="amendment-types-list" value="other" class="checkbox" data-required="false">
+                                <span>Other (describe below)</span>
+                            </label>
+                        </div>
+                        <div class="input-with-label" style="margin-top:16px;">
+                            <label class="input-label">Amendment effective date and description:</label>
+                            <textarea class="form-textarea" placeholder="Describe the amendment and its effective date..." data-required="false"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Participant loans and hardship distributions:
+                    </h3>
+                    <div class="question-help">
+                        Loan and hardship activity must be reported on Form 5500 and affects plan asset calculations. Enter '0' if none.
+                    </div>
+                    <div class="input-group">
+                        <div class="input-with-label">
+                            <label class="input-label">Number of Active Loans (End of Year) <span class="required-indicator">*</span></label>
+                            <input type="number" class="form-input" min="0" value="0" data-required="true">
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">Total Outstanding Loan Balance <span class="required-indicator">*</span></label>
+                            <input type="text" class="form-input" placeholder="$0.00" value="$0.00" data-required="true">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <div class="input-with-label">
+                            <label class="input-label">Number of Hardship Distributions <span class="required-indicator">*</span></label>
+                            <input type="number" class="form-input" min="0" value="0" data-required="true">
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">Total Hardship Distribution Amount <span class="required-indicator">*</span></label>
+                            <input type="text" class="form-input" placeholder="$0.00" value="$0.00" data-required="true">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Did you process any distributions for terminated participants this year?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Distributions affect participant counts, plan assets, and Form 5500 reporting requirements.
+                    </div>
+                    <div class="radio-group" data-group-name="distributions">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('distributions-details', false)">
+                            <input type="radio" name="distributions" value="no" class="radio" data-required="true">
+                            <span>No</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('distributions-details', true)">
+                            <input type="radio" name="distributions" value="yes" class="radio" data-required="true">
+                            <span>Yes</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="distributions-details">
+                        <div class="input-group">
+                            <div class="input-with-label">
+                                <label class="input-label">Number of Termination Distributions</label>
+                                <input type="number" class="form-input" min="0" value="0" data-required="false">
+                            </div>
+                            <div class="input-with-label">
+                                <label class="input-label">Total Distribution Amount</label>
+                                <input type="text" class="form-input" placeholder="$0.00" value="$0.00" data-required="false">
+                            </div>
+                        </div>
+                        <div class="checkbox-group" data-group-name="distribution-types-list">
+                            <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="distribution-types-list" value="lump-sum" class="checkbox" data-required="false">
+                                <span>Lump sum distributions</span>
+                            </label>
+                            <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="distribution-types-list" value="installments" class="checkbox" data-required="false">
+                                <span>Installment payments</span>
+                            </label>
+                            <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="distribution-types-list" value="rollovers" class="checkbox" data-required="false">
+                                <span>Direct rollovers to other plans/IRAs</span>
+                            </label>
+                            <label class="checkbox-option" onclick="toggleCheckbox(this)">
+                                <input type="checkbox" name="distribution-types-list" value="rmd" class="checkbox" data-required="false">
+                                <span>Required minimum distributions</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Plan administration and fiduciary information:
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        This information is required for Form 5500 and identifies key plan fiduciaries.
+                    </div>
+                    <div class="input-group">
+                        <div class="input-with-label">
+                            <label class="input-label">Plan Administrator Name</label>
+                            <input type="text" class="form-input" placeholder="John Smith" data-required="false">
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">Title</label>
+                            <input type="text" class="form-input" placeholder="CFO" data-required="false">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <div class="input-with-label">
+                            <label class="input-label">Phone Number</label>
+                            <input type="tel" class="form-input" placeholder="(555) 123-4567" data-required="false">
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">Email Address</label>
+                            <input type="email" class="form-input" placeholder="admin@company.com" data-required="false">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Did you pay more than $5,000 to any service provider this year (from plan assets or by employer)?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Service provider fees above $5,000 must be disclosed on Form 5500 Schedule C if paid from plan assets. Fees paid by employer may also be relevant.
+                    </div>
+                    <div class="radio-group" data-group-name="service-providers">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('service-providers-details', false)">
+                            <input type="radio" name="service-providers" value="no" class="radio" data-required="true">
+                            <span>No</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('service-providers-details', true)">
+                            <input type="radio" name="service-providers" value="yes" class="radio" data-required="true">
+                            <span>Yes</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="service-providers-details">
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Provider Name</th>
+                                        <th>Services Provided</th>
+                                        <th>Annual Fees Paid</th>
+                                        <th>EIN</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="providers-table">
+                                    <tr>
+                                        <td><input type="text" placeholder="ABC Plan Services" data-required="false"></td>
+                                        <td>
+                                            <select class="form-select" data-required="false">
+                                                <option value="">Select Service</option>
+                                                <option>Third Party Administration</option>
+                                                <option>Investment Advisory</option>
+                                                <option>Recordkeeping</option>
+                                                <option>Audit Services</option>
+                                                <option>Legal Services</option>
+                                                <option>Actuarial Services</option>
+                                                <option>Other</option>
+                                            </select>
+                                        </td>
+                                        <td><input type="text" placeholder="$15,000.00" data-required="false"></td>
+                                        <td><input type="text" placeholder="12-3456789" data-required="false"></td>
+                                        <td><button type="button" class="delete-row-btn" onclick="deleteRow(this)">Delete</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <button type="button" class="add-row-btn" onclick="addProviderRow()">+ Add Another Provider</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button type="button" class="btn btn-secondary" onclick="prevSection()">
+                        ← Previous: Plan Design & Testing
+                    </button>
+                     <div class="completion-status" id="completion-status-4" style="display:none;">
+                        <span>✓</span>
+                        Section Complete
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="nextSection()">
+                        Next: Financial Data & Form 5500 →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-content" id="section-5">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="tab-icon">📊</span> Financial Data & Form 5500
+                </h2>
+                <p class="section-description">Provide financial information and participant data required for Form 5500 preparation</p>
+            </div>
+
+            <div class="form-content">
+                <div class="alert alert-info">
+                    <span>📊</span>
+                    <div>
+                        <strong>Form 5500 Financial Requirements</strong><br/>
+                        This data is required for Form 5500 preparation and determines audit requirements and filing deadlines. Please use exact figures from your financial statements or recordkeeper reports.
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Plan Asset Values
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Asset values determine whether the plan requires an audit (generally 100+ participants with assets) and affect per-participant fee calculations.
+                    </div>
+                    <div class="input-group">
+                        <div class="input-with-label">
+                            <label class="input-label">Plan Assets - Beginning of Year</label>
+                            <input type="text" class="form-input" placeholder="$0.00" data-required="true">
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">Plan Assets - End of Year</label>
+                            <input type="text" class="form-input" placeholder="$0.00" data-required="true">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Contributions and Distributions During Plan Year
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        These amounts are reported on Form 5500 and must reconcile with plan asset changes.
+                    </div>
+                    <div class="input-group">
+                        <div class="input-with-label">
+                            <label class="input-label">Total Employee Contributions</label>
+                            <input type="text" class="form-input" placeholder="$0.00" data-required="true">
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">Total Employer Contributions</label>
+                            <input type="text" class="form-input" placeholder="$0.00" data-required="true">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <div class="input-with-label">
+                            <label class="input-label">Total Distributions Paid Out</label>
+                            <input type="text" class="form-input" placeholder="$0.00" data-required="true">
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">Investment Earnings (Net of Expenses)</label>
+                            <input type="text" class="form-input" placeholder="$0.00" data-required="true">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Participant Count Information (End of Plan Year)
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Participant counts determine filing requirements, audit thresholds, and PBGC premiums (if applicable).
+                    </div>
+                    <div class="input-group">
+                        <div class="input-with-label">
+                            <label class="input-label">Active Participants with Account Balances</label>
+                            <input type="number" class="form-input" min="0" value="0" data-required="true" name="active-participants" onchange="updateParticipantTotal()">
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">Inactive Participants with Account Balances (Terminated/Retired)</label>
+                            <input type="number" class="form-input" min="0" value="0" data-required="true" name="inactive-participants" onchange="updateParticipantTotal()">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <div class="input-with-label">
+                            <label class="input-label">Total Participants with Account Balances</label>
+                            <input type="number" class="form-input" min="0" value="0" readonly style="background: #f8fafc;" name="total-participants">
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">Participants Who Separated During Year (with or without balance)</label>
+                            <input type="number" class="form-input" min="0" value="0" data-required="true">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Plan Status and Termination
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Plan termination status affects filing requirements and triggers special distribution and compliance rules.
+                    </div>
+                    <div class="radio-group" data-group-name="plan-status">
+                        <label class="radio-option" onclick="selectRadio(this)">
+                            <input type="radio" name="plan-status" value="ongoing" class="radio" data-required="true">
+                            <span>Plan is ongoing</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this)">
+                            <input type="radio" name="plan-status" value="terminated" class="radio" data-required="true">
+                            <span>Plan terminated during the year</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this)">
+                            <input type="radio" name="plan-status" value="final-return" class="radio" data-required="true">
+                            <span>Final return (plan termination complete, all assets distributed)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Additional Plan Information
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Additional details required for accurate Form 5500 completion.
+                    </div>
+                    <div class="input-group">
+                        <div class="input-with-label">
+                            <label class="input-label">Plan Year End Date</label>
+                            <input type="date" class="form-input" data-required="true">
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">Employer EIN</label>
+                            <input type="text" class="form-input" placeholder="12-3456789" data-required="true">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <div class="input-with-label">
+                            <label class="input-label">Plan Number (3 digits)</label>
+                            <input type="text" class="form-input" placeholder="001" maxlength="3" data-required="true">
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">ERISA Plan Size (based on total participants at BOY)</label>
+                            <select class="form-select" data-required="true">
+                                <option value="">Select Size</option>
+                                <option>Large Plan (100+ participants)</option>
+                                <option>Small Plan (under 100 participants)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="summary-card" id="filing-summary-card" style="display:none;"> <div class="summary-title">Filing Summary (Estimated)</div>
+                    <div class="summary-item">
+                        <span id="summary-plan-type">Plan Type:</span>
+                        <span id="summary-plan-type-value">N/A</span>
+                    </div>
+                    <div class="summary-item">
+                        <span id="summary-audit-required">Audit Required:</span>
+                        <span id="summary-audit-required-value">N/A</span>
+                    </div>
+                    <div class="summary-item">
+                        <span id="summary-5500-due">Form 5500 Due Date:</span>
+                        <span id="summary-5500-due-value">N/A</span>
+                    </div>
+                </div>
+
+                <div class="alert alert-success" id="ready-for-processing-message" style="display:none;">
+                    <span>✅</span>
+                    <div>
+                        <strong>Ready for Processing</strong><br/>
+                        All required information has been collected. We can now proceed with compliance testing and Form 5500 preparation.
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button type="button" class="btn btn-secondary" onclick="prevSection()">
+                        ← Previous: Plan Operations & Changes
+                    </button>
+                    <div class="completion-status" id="completion-status-5" style="display:none;">
+                        <span>✓</span>
+                        All Sections Complete
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="submitForm()">
+                        Submit Questionnaire →
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSection = 0;
+        const totalSections = 6; // Now 6 sections (0-5)
+        const sectionNames = [
+            "Business & Ownership",
+            "Employee Demographics",
+            "Compensation & Contributions",
+            "Plan Design & Testing",
+            "Plan Operations & Changes",
+            "Financial Data & Form 5500"
+        ];
+
+        function showSection(sectionIndex, forceShow = false) {
+            // Validate current section before moving, unless forceShow is true (e.g. clicking tabs)
+            if (!forceShow && sectionIndex > currentSection) {
+                 if (!validateCurrentSection()) {
+                    const validationSummary = document.getElementById('validation-summary-message');
+                    validationSummary.textContent = 'Please complete all highlighted required fields in the current section before proceeding.';
+                    validationSummary.style.display = 'block';
+                    return; // Stop if validation fails
+                }
+            }
+            document.getElementById('validation-summary-message').style.display = 'none';
+
+
+            const sections = document.querySelectorAll('.section-content');
+            sections.forEach(section => section.classList.remove('active'));
+            
+            const targetSection = document.getElementById(`section-${sectionIndex}`);
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
+
+            const tabs = document.querySelectorAll('.section-tab');
+            tabs.forEach((tab, index) => {
+                tab.classList.remove('active');
+                const tabTextSpan = tab.querySelector('.tab-text');
+                const tabIconSpan = tab.querySelector('.tab-icon');
+                
+                // Reset tab text (remove checkmark if previously added)
+                // tabTextSpan.textContent = sectionNames[index]; // Assuming sectionNames array matches tab order
+
+                if (index === sectionIndex) {
+                    tab.classList.add('active');
+                }
+                
+                // Mark previous sections as completed visually
+                if (isSectionComplete(index) && index < sectionIndex) {
+                    tab.classList.add('completed');
+                     if (!tabIconSpan.textContent.startsWith('✓')) {
+                        tabIconSpan.innerHTML = '✓ ' + tabIconSpan.innerHTML;
+                    }
+                } else if (index < sectionIndex && !tab.classList.contains('completed')) {
+                    // If navigating back, don't remove completed status unless it's truly incomplete
+                } else if (index >= sectionIndex && tab.classList.contains('completed')) {
+                    // If moving to a section that was previously marked complete but now might not be
+                    // (e.g., user went back and un-filled something), remove completed state
+                    // This logic might need refinement based on how "completeness" is strictly defined
+                }
+            });
+
+            currentSection = sectionIndex;
+            updateProgress();
+            updateNavigationButtons();
+
+            // Update completion status display for the current section
+            const completionStatusDiv = document.getElementById(`completion-status-${currentSection}`);
+            if (completionStatusDiv) {
+                completionStatusDiv.style.display = isSectionComplete(currentSection) ? 'flex' : 'none';
+            }
+        }
+        
+        function isSectionComplete(sectionIdx) {
+            // This is a basic check. For a more robust solution, you'd iterate through
+            // all required fields in that specific section and verify they are filled.
+            // For now, we'll assume it's complete if it's not the current section and we've passed it,
+            // or if validateCurrentSection passes for the current one.
+            if (sectionIdx < currentSection) return true; // Simplistic: assume past sections were validated
+            if (sectionIdx === currentSection) return validateCurrentSection(false); // Validate without showing errors
+            return false;
+        }
+
+
+        function nextSection() {
+            if (!validateCurrentSection()) {
+                const validationSummary = document.getElementById('validation-summary-message');
+                validationSummary.textContent = 'Please complete all highlighted required fields in the current section before proceeding.';
+                validationSummary.style.display = 'block';
+                // Scroll to the validation summary
+                validationSummary.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+            document.getElementById('validation-summary-message').style.display = 'none';
+
+            if (currentSection < totalSections - 1) {
+                // Mark current section as complete on the tab before moving
+                const currentTab = document.querySelectorAll('.section-tab')[currentSection];
+                const currentTabIconSpan = currentTab.querySelector('.tab-icon');
+                currentTab.classList.add('completed');
+                if (!currentTabIconSpan.textContent.startsWith('✓')) {
+                    currentTabIconSpan.innerHTML = '✓ ' + currentTabIconSpan.innerHTML;
+                }
+                 // Hide completion status for the section we are leaving
+                const oldCompletionStatusDiv = document.getElementById(`completion-status-${currentSection}`);
+                if (oldCompletionStatusDiv) oldCompletionStatusDiv.style.display = 'none';
+
+
+                showSection(currentSection + 1);
+            }
+        }
+
+        function prevSection() {
+            document.getElementById('validation-summary-message').style.display = 'none';
+            // Hide completion status for the section we are leaving
+            const oldCompletionStatusDiv = document.getElementById(`completion-status-${currentSection}`);
+            if (oldCompletionStatusDiv) oldCompletionStatusDiv.style.display = 'none';
+
+            if (currentSection > 0) {
+                showSection(currentSection - 1, true); // forceShow = true to allow navigation back
+            }
+        }
+
+        function updateNavigationButtons() {
+            const prevButton = document.querySelector(`#section-${currentSection} .navigation-buttons .btn-secondary`);
+            const nextButton = document.querySelector(`#section-${currentSection} .navigation-buttons .btn-primary`);
+
+            if (prevButton) {
+                prevButton.disabled = currentSection === 0;
+                prevButton.textContent = currentSection === 0 ? "← Previous" : `← Previous: ${sectionNames[currentSection - 1] || ''}`;
+            }
+            if (nextButton) {
+                if (currentSection === totalSections - 1) {
+                    nextButton.textContent = 'Submit Questionnaire →';
+                    nextButton.onclick = submitForm;
+                } else {
+                    nextButton.textContent = `Next: ${sectionNames[currentSection + 1] || ''} →`;
+                    nextButton.onclick = nextSection;
+                }
+            }
+        }
+
+
+        function updateProgress() {
+            // Calculate completed sections for progress bar based on actual validation
+            let completedCount = 0;
+            for (let i = 0; i < currentSection; i++) { // Check sections before the current one
+                if (isSectionComplete(i)) { // You might need a more robust isSectionComplete
+                    completedCount++;
+                }
+            }
+             if (isSectionComplete(currentSection) && currentSection < totalSections) { // Check current section if not the last one
+                // If current section is complete, count it for the text, but not for the visual "passed" state yet
+            }
+
+
+            const progressPercentage = Math.round(((currentSection) / totalSections) * 100); // Based on current section index
+            const progressFill = document.querySelector('.progress-fill');
+            const progressText = document.querySelector('.progress-percentage');
+            
+            if (progressFill) {
+                progressFill.style.width = progressPercentage + '%';
+            }
+            if (progressText) {
+                 // Show "X of Y sections" based on current index, not validated count
+                progressText.textContent = `${currentSection + 1} of ${totalSections} sections viewed (${progressPercentage}%)`;
+            }
+
+            // Update completion status display for the current section
+            const completionStatusDiv = document.getElementById(`completion-status-${currentSection}`);
+            if (completionStatusDiv) {
+                completionStatusDiv.style.display = isSectionComplete(currentSection) ? 'flex' : 'none';
+            }
+             if (currentSection === totalSections -1 && isSectionComplete(currentSection)) {
+                document.getElementById('filing-summary-card').style.display = 'block';
+                document.getElementById('ready-for-processing-message').style.display = 'flex';
+            } else {
+                document.getElementById('filing-summary-card').style.display = 'none';
+                document.getElementById('ready-for-processing-message').style.display = 'none';
+            }
+        }
+
+        function selectRadio(element) {
+            const radioGroup = element.closest('.radio-group');
+            if (radioGroup) {
+                radioGroup.querySelectorAll('.radio-option').forEach(option => {
+                    option.classList.remove('selected');
+                    option.classList.remove('error'); // Clear error from other options
+                });
+                element.classList.add('selected');
+                element.classList.remove('error'); // Clear error from this option
+                
+                const radio = element.querySelector('input[type="radio"]');
+                if (radio) {
+                    radio.checked = true;
+                }
+                // Clear error from the group itself if one was selected
+                radioGroup.classList.remove('error');
+            }
+        }
+
+        function toggleCheckbox(element) {
+            const checkbox = element.querySelector('input[type="checkbox"]');
+            const checkboxGroup = element.closest('.checkbox-group');
+            if (checkbox) {
+                checkbox.checked = !checkbox.checked;
+                element.classList.toggle('selected', checkbox.checked);
+                element.classList.remove('error'); // Clear error from this option
+            }
+            // If at least one checkbox in the group is checked, remove error from the group
+            if (checkboxGroup && checkboxGroup.querySelector('input[type="checkbox"]:checked')) {
+                checkboxGroup.classList.remove('error');
+                 checkboxGroup.querySelectorAll('.checkbox-option').forEach(opt => opt.classList.remove('error'));
+            }
+        }
+
+        function toggleDependent(dependentId, show) {
+            const dependent = document.getElementById(dependentId);
+            if (dependent) {
+                if (show) {
+                    dependent.classList.add('show');
+                    // Make inputs within newly shown dependent sections required if they have data-required="false" initially
+                    // but should be required when visible. This is a simple approach.
+                    // A more robust way would be to have a data-required-when-visible attribute.
+                    dependent.querySelectorAll('[data-required="false"]').forEach(input => {
+                        // For this example, we won't dynamically change data-required.
+                        // Instead, validation should check visibility.
+                    });
+                } else {
+                    dependent.classList.remove('show');
+                    // Clear values and errors from hidden dependent inputs
+                    dependent.querySelectorAll('input, select, textarea').forEach(input => {
+                        if (input.type === 'checkbox' || input.type === 'radio') input.checked = false;
+                        else input.value = '';
+                        input.classList.remove('error');
+                        const parentOption = input.closest('.radio-option, .checkbox-option');
+                        if(parentOption) parentOption.classList.remove('selected', 'error');
+                    });
+                }
+            }
+        }
+
+        function validateCurrentSection(showErrorVisuals = true) {
+            const section = document.querySelector(`#section-${currentSection}`);
+            if (!section) return true; // Should not happen
+
+            let allValid = true;
+            const requiredInputs = section.querySelectorAll('[data-required="true"]');
+            const validationSummary = document.getElementById('validation-summary-message');
+            let firstErrorField = null;
+
+            // Helper to check if an element is visible
+            const isVisible = elem => !!(elem.offsetWidth || elem.offsetHeight || elem.getClientRects().length);
+
+            requiredInputs.forEach(input => {
+                // Only validate visible inputs
+                if (!isVisible(input)) {
+                    input.classList.remove('error'); // Remove error from hidden fields
+                    const parentOption = input.closest('.radio-option, .checkbox-option');
+                    if (parentOption) parentOption.classList.remove('error');
+                    const parentGroup = input.closest('.radio-group, .checkbox-group');
+                    if (parentGroup) parentGroup.classList.remove('error');
+                    return;
+                }
+
+                let fieldIsValid = true;
+                const name = input.name;
+                const parentLabel = input.closest('.input-with-label, .radio-group, .checkbox-group');
+
+                if (input.type === 'radio') {
+                    const group = section.querySelectorAll(`input[name="${name}"][data-required="true"]`);
+                    const radioGroupContainer = input.closest('.radio-group');
+                    if (isVisible(radioGroupContainer)) { // Check if the group itself is visible
+                        fieldIsValid = Array.from(group).some(i => i.checked && isVisible(i.closest('.radio-option')));
+                        if (showErrorVisuals) {
+                             radioGroupContainer.classList.toggle('error', !fieldIsValid);
+                             // Also mark individual options if the group is invalid
+                             if(!fieldIsValid) {
+                                radioGroupContainer.querySelectorAll('.radio-option').forEach(opt => opt.classList.add('error'));
+                             } else {
+                                radioGroupContainer.querySelectorAll('.radio-option').forEach(opt => opt.classList.remove('error'));
+                             }
+                        }
+                    } else {
+                        fieldIsValid = true; // Hidden group is considered valid for this check
+                         if (showErrorVisuals && radioGroupContainer) radioGroupContainer.classList.remove('error');
+                    }
+                } else if (input.type === 'checkbox') {
+                    // For a group of checkboxes where at least one is required
+                    const groupName = input.closest('.checkbox-group')?.dataset.groupName || name;
+                    const checkboxGroupContainer = input.closest('.checkbox-group');
+                     if (isVisible(checkboxGroupContainer)) {
+                        const groupCheckboxes = section.querySelectorAll(`input[type="checkbox"][name="${groupName}"][data-required="true"]`);
+                        fieldIsValid = Array.from(groupCheckboxes).some(cb => cb.checked && isVisible(cb.closest('.checkbox-option')));
+                        if (showErrorVisuals) {
+                            checkboxGroupContainer.classList.toggle('error', !fieldIsValid);
+                            if(!fieldIsValid) {
+                                checkboxGroupContainer.querySelectorAll('.checkbox-option').forEach(opt => opt.classList.add('error'));
+                             } else {
+                                checkboxGroupContainer.querySelectorAll('.checkbox-option').forEach(opt => opt.classList.remove('error'));
+                             }
+                        }
+                    } else {
+                        fieldIsValid = true;
+                        if (showErrorVisuals && checkboxGroupContainer) checkboxGroupContainer.classList.remove('error');
+                    }
+                } else if (input.tagName.toLowerCase() === 'select') {
+                    fieldIsValid = input.value.trim() !== '';
+                    if (showErrorVisuals) input.classList.toggle('error', !fieldIsValid);
+                } else { // Text, email, number, date, textarea
+                    fieldIsValid = input.value.trim() !== '';
+                    if (showErrorVisuals) input.classList.toggle('error', !fieldIsValid);
+                }
+
+                if (!fieldIsValid) {
+                    allValid = false;
+                    if (!firstErrorField && showErrorVisuals) firstErrorField = input;
+                } else {
+                     if (showErrorVisuals) { // Clear errors if valid
+                        input.classList.remove('error');
+                        const parentOption = input.closest('.radio-option, .checkbox-option');
+                        if(parentOption) parentOption.classList.remove('error');
+                        const parentGroup = input.closest('.radio-group, .checkbox-group');
+                        if(parentGroup) parentGroup.classList.remove('error');
+                     }
+                }
+            });
+            
+            // Validate inputs within visible dependent sections that might be conditionally required
+            const visibleDependentQuestions = section.querySelectorAll('.dependent-questions.show [data-required-when-visible="true"]');
+             visibleDependentQuestions.forEach(input => {
+                if (!isVisible(input)) return; // Double check visibility
+
+                let fieldIsValid = true;
+                 if (input.tagName.toLowerCase() === 'select') {
+                    fieldIsValid = input.value.trim() !== '';
+                } else { // Text, email, number, date, textarea
+                    fieldIsValid = input.value.trim() !== '';
+                }
+                if (showErrorVisuals) input.classList.toggle('error', !fieldIsValid);
+                if (!fieldIsValid) {
+                    allValid = false;
+                    if (!firstErrorField && showErrorVisuals) firstErrorField = input;
+                } else {
+                    if (showErrorVisuals) input.classList.remove('error');
+                }
+            });
+
+
+            if (!allValid && showErrorVisuals && firstErrorField) {
+                firstErrorField.focus();
+                // Scroll to the first error field if it's off-screen
+                firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            }
+            
+            // Update completion status display for the current section
+            const completionStatusDiv = document.getElementById(`completion-status-${currentSection}`);
+            if (completionStatusDiv) {
+                completionStatusDiv.style.display = allValid ? 'flex' : 'none';
+            }
+
+
+            return allValid;
+        }
+
+
+        function updateParticipantTotal() {
+            const activeEl = document.querySelector('[name="active-participants"]');
+            const inactiveEl = document.querySelector('[name="inactive-participants"]');
+            const totalField = document.querySelector('[name="total-participants"]');
+
+            if (activeEl && inactiveEl && totalField) {
+                const active = parseInt(activeEl.value) || 0;
+                const inactive = parseInt(inactiveEl.value) || 0;
+                totalField.value = active + inactive;
+            }
+        }
+
+        function updateMatchFormula() {
+            const matchPercentageEl = document.querySelector('#section-2 input[type="number"][onchange="updateMatchFormula()"]');
+            const compensationLimitEl = document.querySelectorAll('#section-2 input[type="number"][onchange="updateMatchFormula()"]')[1];
+            const formulaDisplay = document.getElementById('match-formula-display');
+            
+            if (matchPercentageEl && compensationLimitEl && formulaDisplay) {
+                const matchPercentage = matchPercentageEl.value || '0';
+                const compensationLimit = compensationLimitEl.value || '0';
+                formulaDisplay.textContent = `Current Formula: ${matchPercentage}% match on first ${compensationLimit}% of compensation contributed`;
+            }
+        }
+
+        function addRowToTable(tableBodyId, cellsConfig) {
+            const tableBody = document.getElementById(tableBodyId);
+            if (!tableBody || !tableBody.rows[0]) {
+                console.error("Table or template row not found for ID:", tableBodyId);
+                return;
+            }
+            const newRow = tableBody.rows[0].cloneNode(true);
+            newRow.querySelectorAll('input, select').forEach(input => {
+                if (input.type === 'checkbox' || input.type === 'radio') input.checked = false;
+                else input.value = '';
+                input.classList.remove('error');
+            });
+            // Ensure delete button is present and correctly wired if it wasn't cloned properly or needs specific handling
+            const deleteBtn = newRow.querySelector('.delete-row-btn');
+            if (deleteBtn) {
+                deleteBtn.onclick = function() { deleteRow(this); };
+            } else { // Add delete button if missing in clone
+                const lastCell = newRow.cells[newRow.cells.length -1]; // Assume last cell is for action
+                if(lastCell && !lastCell.querySelector('.delete-row-btn')) {
+                     const btn = document.createElement('button');
+                     btn.type = 'button';
+                     btn.className = 'delete-row-btn';
+                     btn.textContent = 'Delete';
+                     btn.onclick = function() { deleteRow(this); };
+                     lastCell.appendChild(btn);
+                }
+            }
+            tableBody.appendChild(newRow);
+        }
+
+        function addOtherBusinessRow() {
+            addRowToTable('other-businesses-table');
+        }
+
+        function addOwnerRow() {
+             addRowToTable('owners-table');
+        }
+
+        function addOfficerRow() {
+             addRowToTable('officers-table');
+        }
+
+        function addProviderRow() {
+             addRowToTable('providers-table');
+        }
+
+        function deleteRow(button) {
+            const row = button.closest('tr');
+            const tableBody = row.parentElement;
+            if (tableBody.rows.length > 1) { // Keep at least one row as a template
+                row.remove();
+            } else {
+                // If it's the last template row, just clear its inputs
+                row.querySelectorAll('input, select').forEach(input => {
+                    if (input.type === 'checkbox' || input.type === 'radio') input.checked = false;
+                    else input.value = '';
+                    input.classList.remove('error');
+                });
+            }
+        }
+
+
+        function submitForm() {
+            // Final validation of the last section
+            if (!validateCurrentSection()) {
+                const validationSummary = document.getElementById('validation-summary-message');
+                validationSummary.textContent = 'Please complete all highlighted required fields in the current section before submitting.';
+                validationSummary.style.display = 'block';
+                validationSummary.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+            document.getElementById('validation-summary-message').style.display = 'none';
+
+            // Check if all sections are marked complete (more robust check might be needed)
+            let allSectionsGloballyComplete = true;
+            for(let i=0; i < totalSections; i++) {
+                // Temporarily switch to section to validate it without UI change
+                const tempCurrentSection = currentSection;
+                currentSection = i;
+                if (!validateCurrentSection(false)) { // false to not show UI errors during this check
+                    allSectionsGloballyComplete = false;
+                    currentSection = tempCurrentSection; // Switch back
+                    // Optionally, navigate to the first incomplete section:
+                    // showSection(i, true);
+                    // alert(`Section "${sectionNames[i]}" is incomplete. Please review.`);
+                    const validationSummaryGlobal = document.getElementById('validation-summary-message');
+                    validationSummaryGlobal.textContent = `Section "${sectionNames[i]}" has incomplete required fields. Please review.`;
+                    validationSummaryGlobal.style.display = 'block';
+                    showSection(i, true); // Navigate to the incomplete section
+                    validationSummaryGlobal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return;
+                }
+                currentSection = tempCurrentSection; // Switch back
+            }
+
+            if (allSectionsGloballyComplete) {
+                // Replace alert with a more integrated message or modal
+                const finalMessageContainer = document.createElement('div');
+                finalMessageContainer.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;";
+                finalMessageContainer.innerHTML = `
+                    <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); text-align: center; max-width: 90%; width: 450px;">
+                        <h2 style="color: #065f46; margin-bottom: 15px;">✅ Questionnaire Submitted!</h2>
+                        <p style="font-size: 15px; line-height: 1.6; margin-bottom: 10px;">Your responses will be used for:</p>
+                        <ul style="list-style-position: inside; text-align: left; margin-bottom: 20px; font-size: 14px;">
+                            <li>Compliance testing (ADP/ACP, etc.)</li>
+                            <li>Form 5500 preparation</li>
+                            <li>Plan audit coordination (if applicable)</li>
+                            <li>Regulatory filing deadlines</li>
+                        </ul>
+                        <p style="font-size: 15px; line-height: 1.6; margin-bottom: 25px;"><strong>Next steps:</strong> Our team will review your responses and contact you within 2 business days.</p>
+                        <button type="button" class="btn btn-primary" onclick="this.parentElement.parentElement.remove()">Close</button>
+                    </div>
+                `;
+                document.body.appendChild(finalMessageContainer);
+                console.log("Form submitted (simulated). Data would be collected here.");
+            }
+        }
+
+        // Initialize the form
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default values for some fields as in original example
+            // Section 0
+            document.querySelector('#section-0 input[name="other-business"][value="no"]').closest('.radio-option').click();
+            document.querySelector('#section-0 input[name="shared-services"][value="no"]').closest('.radio-option').click();
+            document.querySelector('#section-0 input[name="corporate-transaction"][value="no"]').closest('.radio-option').click();
+            document.querySelector('#section-0 input[name="multi-employer"][value="no"]').closest('.radio-option').click();
+
+            // Section 1
+            document.querySelector('#section-1 input[name="five-percent-owners"][value="no"]').closest('.radio-option').click();
+            document.querySelector('#section-1 input[name="officers"][value="no"]').closest('.radio-option').click();
+            document.querySelector('#section-1 input[name="leased-employees"][value="no"]').closest('.radio-option').click();
+            document.querySelector('#section-1 input[name="part-time"][value="no"]').closest('.radio-option').click();
+
+
+            // Section 2 (Example: select matching, then set discretionary)
+            const matchingCheckbox = document.querySelector('#section-2 input[name="contribution-types"][value="matching"]');
+            if (matchingCheckbox) matchingCheckbox.closest('.checkbox-option').click(); // Check matching
+            const discretionaryMatchRadio = document.querySelector('#section-2 input[name="match-type"][value="discretionary"]');
+            if (discretionaryMatchRadio) discretionaryMatchRadio.closest('.radio-option').click(); // Select discretionary
+
+            document.querySelector('#section-2 input[name="contribution-conditions"][value="no"]').closest('.radio-option').click();
+            document.querySelector('#section-2 input[name="benefit-groups"][value="no"]').closest('.radio-option').click();
+            document.querySelector('#section-2 input[name="special-compensation"][value="no"]').closest('.radio-option').click();
+
+
+            // Section 3
+            const noSafeHarbor = document.querySelector('#section-3 input[name="safe-harbor"][value="no"]');
+            if (noSafeHarbor) noSafeHarbor.closest('.radio-option').click();
+            
+            const noAutoEnroll = document.querySelector('#section-3 input[name="auto-enrollment"][value="no"]');
+            if(noAutoEnroll) noAutoEnroll.closest('.radio-option').click();
+
+            const immediateVesting = document.querySelector('#section-3 input[name="vesting-type"][value="immediate"]');
+            if(immediateVesting) immediateVesting.closest('.radio-option').click();
+
+
+            // Section 4
+            document.querySelector('#section-4 input[name="plan-amendments"][value="no"]').closest('.radio-option').click();
+            document.querySelector('#section-4 input[name="distributions"][value="no"]').closest('.radio-option').click();
+            document.querySelector('#section-4 input[name="service-providers"][value="no"]').closest('.radio-option').click();
+            
+            // Section 5
+            const ongoingPlan = document.querySelector('#section-5 input[name="plan-status"][value="ongoing"]');
+            if(ongoingPlan) ongoingPlan.closest('.radio-option').click();
+
+
+            showSection(0, true); // Show first section, force it
+            updateProgress(); // Initial progress update
+            updateNavigationButtons(); // Initial button state
+        });
+    </script>
+</body>
+</html>

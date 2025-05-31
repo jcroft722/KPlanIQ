@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plan Configuration Questionnaire</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .questionnaire-header {
+            background: linear-gradient(135deg, #1e40af 0%, #3730a3 100%);
+            color: white;
+            padding: 32px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        
+        .questionnaire-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .questionnaire-subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .progress-bar {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .progress-text {
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .progress-percentage {
+            font-size: 14px;
+            color: #6b7280;
+        }
+        
+        .progress-track {
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+            transition: width 0.3s ease;
+            width: 10%;
+        }
+        
+        .section-nav {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+        
+        .section-tab {
+            padding: 12px 20px;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            white-space: nowrap;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 140px;
+            justify-content: center;
+        }
+        
+        .section-tab:hover {
+            border-color: #d1d5db;
+            background: #f9fafb;
+        }
+        
+        .section-tab.active {
+            border-color: #3b82f6;
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+        
+        .section-tab.completed {
+            border-color: #10b981;
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .section-content {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: none;
+        }
+        
+        .section-content.active {
+            display: block;
+        }
+        
+        .section-header {
+            background: #f8fafc;
+            padding: 24px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .section-description {
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        .form-content {
+            padding: 24px;
+        }
+        
+        .question-group {
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        
+        .question-group:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .question-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        
+        .required-indicator {
+            color: #ef4444;
+            font-size: 14px;
+        }
+        
+        .question-help {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 6px;
+            border-left: 3px solid #3b82f6;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .form-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .radio-option {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            cursor: pointer;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        
+        .radio-option:hover {
+            border-color: #d1d5db;
+            background: #f9fafb;
+        }
+        
+        .radio-option.selected {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        
+        .radio {
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+        }
+        
+        .input-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        
+        .input-with-label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .input-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #374151;
+        }
+        
+        .formula-display {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+        
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        
+        .alert-info {
+            background: #eff6ff;
+            border: 2px solid #bfdbfe;
+            color: #1e40af;
+        }
+        
+        .alert-warning {
+            background: #fffbeb;
+            border: 2px solid #fed7aa;
+            color: #92400e;
+        }
+        
+        .navigation-buttons {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: #6b7280;
+            border: 2px solid #e5e7eb;
+        }
+        
+        .btn-secondary:hover {
+            border-color: #d1d5db;
+            background: #f9fafb;
+        }
+        
+        .completion-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #059669;
+        }
+        
+        .dependent-questions {
+            margin-left: 24px;
+            margin-top: 16px;
+            padding-left: 16px;
+            border-left: 2px solid #e5e7eb;
+            display: none;
+        }
+        
+        .dependent-questions.show {
+            display: block;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        .vesting-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+        
+        .vesting-table th,
+        .vesting-table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .vesting-table th {
+            background: #f8fafc;
+            font-weight: 600;
+        }
+        
+        .vesting-table input {
+            width: 80px;
+            padding: 6px 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+        }
+        
+        .form-checkbox {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+            cursor: pointer;
+        }
+        
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+        }
+        
+        .checkbox-label {
+            flex: 1;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="questionnaire-header">
+            <h1 class="questionnaire-title">Plan Configuration & Compliance Setup</h1>
+            <p class="questionnaire-subtitle">Annual questionnaire to ensure accurate compliance testing and Form 5500 preparation</p>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-header">
+                <span class="progress-text">Questionnaire Progress</span>
+                <span class="progress-percentage">1 of 8 sections completed (12%)</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill"></div>
+            </div>
+        </div>
+
+        <div class="section-nav">
+            <div class="section-tab active" onclick="showSection(0)">
+                <span>📝</span>
+                Matching Formula
+            </div>
+            <div class="section-tab" onclick="showSection(1)">
+                <span>⏳</span>
+                Vesting Schedule
+            </div>
+            <div class="section-tab" onclick="showSection(2)">
+                <span>⏳</span>
+                Testing Elections
+            </div>
+            <div class="section-tab" onclick="showSection(3)">
+                <span>⏳</span>
+                Auto-Enrollment
+            </div>
+            <div class="section-tab" onclick="showSection(4)">
+                <span>⏳</span>
+                Plan Changes
+            </div>
+            <div class="section-tab" onclick="showSection(5)">
+                <span>⏳</span>
+                Corporate Events
+            </div>
+            <div class="section-tab" onclick="showSection(6)">
+                <span>⏳</span>
+                Financial Data
+            </div>
+            <div class="section-tab" onclick="showSection(7)">
+                <span>⏳</span>
+                Form 5500
+            </div>
+        </div>
+
+        <!-- Section 0: Matching Formula -->
+        <div class="section-content active" id="section-0">
+            <div class="section-header">
+                <h2 class="section-title">Employer Matching Formula</h2>
+                <p class="section-description">Define how employer contributions are calculated and allocated to participant accounts</p>
+            </div>
+
+            <div class="form-content">
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Does the plan provide employer matching contributions?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Employer matching affects ACP testing requirements and must be accurately configured for compliance calculations.
+                    </div>
+                    <div class="radio-group">
+                        <label class="radio-option selected" onclick="selectRadio(this); toggleDependent('matching-yes', true)">
+                            <input type="radio" name="has-matching" value="yes" class="radio" checked>
+                            <span>Yes, we provide employer matching</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('matching-yes', false)">
+                            <input type="radio" name="has-matching" value="no" class="radio">
+                            <span>No employer matching</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('matching-yes', false)">
+                            <input type="radio" name="has-matching" value="safe-harbor" class="radio">
+                            <span>Safe Harbor matching only</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions show" id="matching-yes">
+                        <div class="alert alert-info">
+                            <span>ℹ️</span>
+                            <div>
+                                <strong>Matching contributions are subject to ACP testing</strong><br>
+                                Your matching formula directly impacts whether the plan passes non-discrimination tests.
+                            </div>
+                        </div>
+
+                        <h4 class="question-title" style="margin-top: 24px;">
+                            What is your matching formula?
+                            <span class="required-indicator">*</span>
+                        </h4>
+                        <div class="radio-group">
+                            <label class="radio-option selected" onclick="selectRadio(this)">
+                                <input type="radio" name="match-formula" value="dollar-for-dollar" class="radio" checked>
+                                <div>
+                                    <strong>Dollar-for-dollar match up to a percentage</strong><br>
+                                    <span style="color: #6b7280; font-size: 13px;">Most common: 100% match up to X% of compensation</span>
+                                </div>
+                            </label>
+                            <label class="radio-option" onclick="selectRadio(this)">
+                                <input type="radio" name="match-formula" value="partial-match" class="radio">
+                                <div>
+                                    <strong>Partial match (e.g., 50 cents per dollar)</strong><br>
+                                    <span style="color: #6b7280; font-size: 13px;">Example: 50% match up to 6% of compensation</span>
+                                </div>
+                            </label>
+                            <label class="radio-option" onclick="selectRadio(this)">
+                                <input type="radio" name="match-formula" value="tiered" class="radio">
+                                <div>
+                                    <strong>Tiered matching formula</strong><br>
+                                    <span style="color: #6b7280; font-size: 13px;">Different match rates for different contribution levels</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="input-group" style="margin-top: 16px;">
+                            <div class="input-with-label">
+                                <label class="input-label">Match Percentage</label>
+                                <input type="number" class="form-input" value="100" step="0.1" min="0" max="100" onchange="updateFormula()">
+                            </div>
+                            <div class="input-with-label">
+                                <label class="input-label">Up to % of Compensation</label>
+                                <input type="number" class="form-input" value="4" step="0.1" min="0" max="100" onchange="updateFormula()">
+                            </div>
+                        </div>
+
+                        <div class="formula-display" id="formula-display">
+                            Current Formula: 100% match on first 4% of compensation contributed
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Are there any eligibility requirements for matching?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Matching eligibility can differ from plan participation eligibility and affects when employees begin receiving matches.
+                    </div>
+                    <div class="form-checkbox">
+                        <input type="checkbox" class="checkbox" checked>
+                        <label class="checkbox-label">Same as plan eligibility (no additional requirements)</label>
+                    </div>
+                    <div class="form-checkbox">
+                        <input type="checkbox" class="checkbox">
+                        <label class="checkbox-label">Must work minimum hours per pay period</label>
+                    </div>
+                    <div class="form-checkbox">
+                        <input type="checkbox" class="checkbox">
+                        <label class="checkbox-label">Must be employed on last day of plan year</label>
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button class="btn btn-secondary" disabled>
+                        ← Previous
+                    </button>
+                    <div class="completion-status">
+                        <span>✓</span>
+                        Section Complete
+                    </div>
+                    <button class="btn btn-primary" onclick="nextSection()">
+                        Next: Vesting Schedule →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 1: Vesting Schedule -->
+        <div class="section-content" id="section-1">
+            <div class="section-header">
+                <h2 class="section-title">Vesting Schedule</h2>
+                <p class="section-description">Configure how participants earn rights to employer contributions over time</p>
+            </div>
+
+            <div class="form-content">
+                <div class="question-group">
+                    <h3 class="question-title">
+                        What vesting schedule applies to employer matching contributions?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Vesting schedules affect forfeitures, which impact compliance testing and must be properly tracked for Form 5500 reporting.
+                    </div>
+                    <div class="radio-group">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('vesting-graded', false)">
+                            <input type="radio" name="vesting-type" value="immediate" class="radio">
+                            <div>
+                                <strong>Immediate (100% vesting)</strong><br>
+                                <span style="color: #6b7280; font-size: 13px;">Participants are immediately vested in all employer contributions</span>
+                            </div>
+                        </label>
+                        <label class="radio-option selected" onclick="selectRadio(this); toggleDependent('vesting-graded', true)">
+                            <input type="radio" name="vesting-type" value="graded" class="radio" checked>
+                            <div>
+                                <strong>Graded vesting schedule</strong><br>
+                                <span style="color: #6b7280; font-size: 13px;">Vesting percentage increases with years of service</span>
+                            </div>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('vesting-graded', false)">
+                            <input type="radio" name="vesting-type" value="cliff" class="radio">
+                            <div>
+                                <strong>Cliff vesting</strong><br>
+                                <span style="color: #6b7280; font-size: 13px;">0% until a specific service milestone, then 100%</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions show" id="vesting-graded">
+                        <h4 class="question-title" style="margin-top: 24px;">
+                            Specify your graded vesting schedule:
+                        </h4>
+                        <div class="table-container">
+                            <table class="vesting-table">
+                                <thead>
+                                    <tr>
+                                        <th>Years of Service</th>
+                                        <th>Vested Percentage</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Less than 2 years</td>
+                                        <td><input type="number" value="0" min="0" max="100">%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>2 years</td>
+                                        <td><input type="number" value="20" min="0" max="100">%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>3 years</td>
+                                        <td><input type="number" value="40" min="0" max="100">%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>4 years</td>
+                                        <td><input type="number" value="60" min="0" max="100">%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>5 years</td>
+                                        <td><input type="number" value="80" min="0" max="100">%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>6+ years</td>
+                                        <td><input type="number" value="100" min="0" max="100">%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="alert alert-info" style="margin-top: 16px;">
+                            <span>ℹ️</span>
+                            <div>This schedule meets the maximum vesting requirements under IRC §411(a)(2)(B)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        How are forfeitures from terminated participants handled?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Forfeiture allocation method affects participant account values and must be consistently applied.
+                    </div>
+                    <div class="radio-group">
+                        <label class="radio-option selected" onclick="selectRadio(this)">
+                            <input type="radio" name="forfeitures" value="reduce-contributions" class="radio" checked>
+                            <span>Used to reduce employer contributions</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this)">
+                            <input type="radio" name="forfeitures" value="allocate-participants" class="radio">
+                            <span>Allocated to remaining participant accounts</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this)">
+                            <input type="radio" name="forfeitures" value="administrative-expenses" class="radio">
+                            <span>Used to pay plan administrative expenses</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button class="btn btn-secondary" onclick="prevSection()">
+                        ← Previous: Matching Formula
+                    </button>
+                    <div class="completion-status">
+                        <span>✓</span>
+                        Section Complete
+                    </div>
+                    <button class="btn btn-primary" onclick="nextSection()">
+                        Next: Testing Elections →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Testing Elections -->
+        <div class="section-content" id="section-2">
+            <div class="section-header">
+                <h2 class="section-title">Testing Elections</h2>
+                <p class="section-description">Configure compliance testing methods and elections that determine pass/fail outcomes</p>
+            </div>
+
+            <div class="form-content">
+                <div class="alert alert-warning">
+                    <span>⚠️</span>
+                    <div>
+                        <strong>Critical for Compliance Testing</strong><br>
+                        These elections directly determine whether your plan passes or fails ADP/ACP testing. Incorrect selections can lead to costly corrections.
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        What testing method do you elect for ADP testing?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Prior year vs. current year testing affects the HCE/NHCE ratios used in compliance calculations and cannot be changed mid-year without IRS consent.
+                    </div>
+                    <div class="radio-group">
+                        <label class="radio-option selected" onclick="selectRadio(this)">
+                            <input type="radio" name="adp-method" value="prior-year" class="radio" checked>
+                            <div>
+                                <strong>Prior Year Testing</strong><br>
+                                <span style="color: #6b7280; font-size: 13px;">Uses NHCE data from the previous plan year (more predictable)</span>
+                            </div>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this)">
+                            <input type="radio" name="adp-method" value="current-year" class="radio">
+                            <div>
+                                <strong>Current Year Testing</strong><br>
+                                <span style="color: #6b7280; font-size: 13px;">Uses NHCE data from the current plan year (first year default)</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        How do you define compensation for testing purposes?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        The compensation definition affects HCE determination and ADP/ACP calculations. Must be consistent throughout the plan year.
+                    </div>
+                    <div class="radio-group">
+                        <label class="radio-option selected" onclick="selectRadio(this)">
+                            <input type="radio" name="compensation-def" value="414s" class="radio" checked>
+                            <div>
+                                <strong>IRC Section 414(s) compensation</strong><br>
+                                <span style="color: #6b7280; font-size: 13px;">W-2 wages (most common selection)</span>
+                            </div>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this)">
+                            <input type="radio" name="compensation-def" value="415c" class="radio">
+                            <div>
+                                <strong>IRC Section 415(c)(3) compensation</strong><br>
+                                <span style="color: #6b7280; font-size: 13px;">Includes elective deferrals and certain fringe benefits</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button class="btn btn-secondary" onclick="prevSection()">
+                        ← Previous: Vesting Schedule
+                    </button>
+                    <div class="completion-status">
+                        <span>✓</span>
+                        Section Complete
+                    </div>
+                    <button class="btn btn-primary" onclick="nextSection()">
+                        Next: Auto-Enrollment →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Auto-Enrollment -->
+        <div class="section-content" id="section-3">
+            <div class="section-header">
+                <h2 class="section-title">Auto-Enrollment Provisions</h2>
+                <p class="section-description">Configure automatic enrollment features and safe harbor elections</p>
+            </div>
+
+            <div class="form-content">
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Does the plan have automatic enrollment?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Auto-enrollment status affects testing requirements, participant notices, and Form 5500 reporting requirements.
+                    </div>
+                    <div class="radio-group">
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('auto-config', false)">
+                            <input type="radio" name="auto-enrollment" value="none" class="radio">
+                            <span>No automatic enrollment</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('auto-config', true)">
+                            <input type="radio" name="auto-enrollment" value="eaca" class="radio">
+                            <div>
+                                <strong>EACA (Eligible Automatic Contribution Arrangement)</strong><br>
+                                <span style="color: #6b7280; font-size: 13px;">Basic auto-enrollment with 90-day withdrawal period</span>
+                            </div>
+                        </label>
+                        <label class="radio-option selected" onclick="selectRadio(this); toggleDependent('auto-config', true)">
+                            <input type="radio" name="auto-enrollment" value="qaca" class="radio" checked>
+                            <div>
+                                <strong>QACA (Qualified Automatic Contribution Arrangement)</strong><br>
+                                <span style="color: #6b7280; font-size: 13px;">Safe harbor auto-enrollment with ADP/ACP testing exemption</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions show" id="auto-config">
+                        <h4 class="question-title" style="margin-top: 24px;">
+                            Default Contribution Rates:
+                        </h4>
+                        
+                        <div class="input-group">
+                            <div class="input-with-label">
+                                <label class="input-label">Year 1 Default Rate</label>
+                                <input type="number" class="form-input" value="3" step="0.1" min="3" max="15">
+                                <span style="font-size: 12px; color: #6b7280;">Minimum 3% for QACA</span>
+                            </div>
+                            <div class="input-with-label">
+                                <label class="input-label">Year 2 Default Rate</label>
+                                <input type="number" class="form-input" value="4" step="0.1" min="3" max="15">
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <div class="input-with-label">
+                                <label class="input-label">Year 3 Default Rate</label>
+                                <input type="number" class="form-input" value="5" step="0.1" min="3" max="15">
+                            </div>
+                            <div class="input-with-label">
+                                <label class="input-label">Year 4+ Default Rate</label>
+                                <input type="number" class="form-input" value="6" step="0.1" min="6" max="15">
+                                <span style="font-size: 12px; color: #6b7280;">Minimum 6% for QACA</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        What is the default investment for auto-enrolled participants?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        QDIA (Qualified Default Investment Alternative) selection affects fiduciary liability and participant notice requirements.
+                    </div>
+                    <div class="radio-group">
+                        <label class="radio-option selected" onclick="selectRadio(this)">
+                            <input type="radio" name="default-investment" value="target-date" class="radio" checked>
+                            <div>
+                                <strong>Target Date Fund</strong><br>
+                                <span style="color: #6b7280; font-size: 13px;">Age-based lifecycle fund (most common QDIA)</span>
+                            </div>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this)">
+                            <input type="radio" name="default-investment" value="balanced-fund" class="radio">
+                            <div>
+                                <strong>Balanced Fund</strong><br>
+                                <span style="color: #6b7280; font-size: 13px;">Mixed equity/bond allocation fund</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button class="btn btn-secondary" onclick="prevSection()">
+                        ← Previous: Testing Elections
+                    </button>
+                    <div class="completion-status">
+                        <span>✓</span>
+                        Section Complete
+                    </div>
+                    <button class="btn btn-primary" onclick="nextSection()">
+                        Next: Plan Changes →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 4: Plan Changes -->
+        <div class="section-content" id="section-4">
+            <div class="section-header">
+                <h2 class="section-title">Plan Changes & Events</h2>
+                <p class="section-description">Document any plan amendments, participant events, or operational changes during the plan year</p>
+            </div>
+
+            <div class="form-content">
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Were there any plan amendments during this plan year?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Plan amendments can affect testing calculations, participant rights, and Form 5500 reporting requirements.
+                    </div>
+                    <div class="radio-group">
+                        <label class="radio-option selected" onclick="selectRadio(this); toggleDependent('amendments', false)">
+                            <input type="radio" name="plan-amendments" value="no" class="radio" checked>
+                            <span>No plan amendments</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this); toggleDependent('amendments', true)">
+                            <input type="radio" name="plan-amendments" value="yes" class="radio">
+                            <span>Yes, there were plan amendments</span>
+                        </label>
+                    </div>
+
+                    <div class="dependent-questions" id="amendments">
+                        <h4 class="question-title" style="margin-top: 24px;">
+                            Amendment Details:
+                        </h4>
+                        <div class="form-checkbox">
+                            <input type="checkbox" class="checkbox">
+                            <label class="checkbox-label">Contribution limit changes</label>
+                        </div>
+                        <div class="form-checkbox">
+                            <input type="checkbox" class="checkbox">
+                            <label class="checkbox-label">Matching formula modifications</label>
+                        </div>
+                        <div class="form-checkbox">
+                            <input type="checkbox" class="checkbox">
+                            <label class="checkbox-label">Eligibility requirement changes</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Were there any participant loans or hardship distributions?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Loan and hardship activity must be reported on Form 5500 and affects plan asset calculations.
+                    </div>
+                    <div class="input-group">
+                        <div class="input-with-label">
+                            <label class="input-label">Number of Active Loans (End of Year)</label>
+                            <input type="number" class="form-input" value="23" min="0">
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">Total Outstanding Loan Balance</label>
+                            <input type="text" class="form-input" value="$185,750" placeholder="$0">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button class="btn btn-secondary" onclick="prevSection()">
+                        ← Previous: Auto-Enrollment
+                    </button>
+                    <div class="completion-status">
+                        <span>✓</span>
+                        Section Complete
+                    </div>
+                    <button class="btn btn-primary" onclick="nextSection()">
+                        Next: Corporate Events →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 5: Corporate Events -->
+        <div class="section-content" id="section-5">
+            <div class="section-header">
+                <h2 class="section-title">Corporate Events & Transactions</h2>
+                <p class="section-description">Report any business transactions that affect plan participants or operations</p>
+            </div>
+
+            <div class="form-content">
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Did the employer undergo any corporate transactions this year?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Corporate events can trigger special testing requirements, participant transfers, and additional Form 5500 schedules.
+                    </div>
+                    <div class="form-checkbox">
+                        <input type="checkbox" class="checkbox">
+                        <label class="checkbox-label">
+                            <strong>Merger or acquisition</strong><br>
+                            <span style="color: #6b7280; font-size: 13px;">Company acquired another business or was acquired</span>
+                        </label>
+                    </div>
+                    <div class="form-checkbox">
+                        <input type="checkbox" class="checkbox">
+                        <label class="checkbox-label">
+                            <strong>Divestiture or spin-off</strong><br>
+                            <span style="color: #6b7280; font-size: 13px;">Company sold a division or spun off business units</span>
+                        </label>
+                    </div>
+                    <div class="form-checkbox">
+                        <input type="checkbox" class="checkbox">
+                        <label class="checkbox-label">
+                            <strong>Plan merger or transfer</strong><br>
+                            <span style="color: #6b7280; font-size: 13px;">Assets transferred to/from another qualified plan</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Were there any controlled group or affiliated service group changes?
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Changes in controlled group status affect which employees must be included in compliance testing.
+                    </div>
+                    <div class="radio-group">
+                        <label class="radio-option selected" onclick="selectRadio(this)">
+                            <input type="radio" name="controlled-group" value="no-changes" class="radio" checked>
+                            <span>No changes to controlled group structure</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this)">
+                            <input type="radio" name="controlled-group" value="new-entities" class="radio">
+                            <span>New entities added to controlled group</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this)">
+                            <input type="radio" name="controlled-group" value="entities-removed" class="radio">
+                            <span>Entities removed from controlled group</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button class="btn btn-secondary" onclick="prevSection()">
+                        ← Previous: Plan Changes
+                    </button>
+                    <div class="completion-status">
+                        <span>✓</span>
+                        Section Complete
+                    </div>
+                    <button class="btn btn-primary" onclick="nextSection()">
+                        Next: Financial Data →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 6: Financial Data -->
+        <div class="section-content" id="section-6">
+            <div class="section-header">
+                <h2 class="section-title">Financial Data & Plan Assets</h2>
+                <p class="section-description">Provide financial information required for Form 5500 and compliance calculations</p>
+            </div>
+
+            <div class="form-content">
+                <div class="alert alert-info">
+                    <span>📊</span>
+                    <div>
+                        <strong>Form 5500 Financial Requirements</strong><br>
+                        This data is required for Form 5500 Schedule H (large plans) or Schedule I (small plans) and affects audit requirements.
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Plan Asset Values
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Asset values determine whether the plan requires an audit and affect per-participant fee calculations.
+                    </div>
+                    <div class="input-group">
+                        <div class="input-with-label">
+                            <label class="input-label">Plan Assets - Beginning of Year</label>
+                            <input type="text" class="form-input" value="$8,450,000" placeholder="$0">
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">Plan Assets - End of Year</label>
+                            <input type="text" class="form-input" value="$9,125,000" placeholder="$0">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Contributions and Distributions
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="input-group">
+                        <div class="input-with-label">
+                            <label class="input-label">Total Employee Contributions</label>
+                            <input type="text" class="form-input" value="$485,600" placeholder="$0">
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">Total Employer Contributions</label>
+                            <input type="text" class="form-input" value="$142,300" placeholder="$0">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <div class="input-with-label">
+                            <label class="input-label">Total Distributions</label>
+                            <input type="text" class="form-input" value="$325,800" placeholder="$0">
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">Investment Earnings (Net)</label>
+                            <input type="text" class="form-input" value="$573,200" placeholder="$0">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button class="btn btn-secondary" onclick="prevSection()">
+                        ← Previous: Corporate Events
+                    </button>
+                    <div class="completion-status">
+                        <span>✓</span>
+                        Section Complete
+                    </div>
+                    <button class="btn btn-primary" onclick="nextSection()">
+                        Next: Form 5500 →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 7: Form 5500 Data -->
+        <div class="section-content" id="section-7">
+            <div class="section-header">
+                <h2 class="section-title">Form 5500 Specific Data</h2>
+                <p class="section-description">Final data points required for accurate Form 5500 preparation and filing</p>
+            </div>
+
+            <div class="form-content">
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Participant Count Information
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Participant counts determine filing requirements, audit thresholds, and PBGC premiums.
+                    </div>
+                    <div class="input-group">
+                        <div class="input-with-label">
+                            <label class="input-label">Active Participants (End of Year)</label>
+                            <input type="number" class="form-input" value="156" min="0">
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">Inactive Participants with Account Balances</label>
+                            <input type="number" class="form-input" value="23" min="0">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <div class="input-with-label">
+                            <label class="input-label">Total Participants with Account Balances</label>
+                            <input type="number" class="form-input" value="179" min="0" readonly style="background: #f8fafc;">
+                        </div>
+                        <div class="input-with-label">
+                            <label class="input-label">Participants Who Separated During Year</label>
+                            <input type="number" class="form-input" value="12" min="0">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <h3 class="question-title">
+                        Plan Termination Status
+                        <span class="required-indicator">*</span>
+                    </h3>
+                    <div class="question-help">
+                        Plan termination affects filing requirements and triggers special distribution and compliance rules.
+                    </div>
+                    <div class="radio-group">
+                        <label class="radio-option selected" onclick="selectRadio(this)">
+                            <input type="radio" name="plan-status" value="ongoing" class="radio" checked>
+                            <span>Plan is ongoing</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this)">
+                            <input type="radio" name="plan-status" value="terminated" class="radio">
+                            <span>Plan terminated during the year</span>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this)">
+                            <input type="radio" name="plan-status" value="final-return" class="radio">
+                            <span>Final return (plan termination complete)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <span>✅</span>
+                    <div>
+                        <strong>Ready for Filing</strong><br>
+                        Based on your responses: Large plan (100+ participants), audit required, Form 5500 due October 15, 2025.
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button class="btn btn-secondary" onclick="prevSection()">
+                        ← Previous: Financial Data
+                    </button>
+                    <div class="completion-status">
+                        <span>✓</span>
+                        All Sections Complete
+                    </div>
+                    <button class="btn btn-primary" onclick="submitForm()">
+                        Submit Questionnaire →
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSection = 0;
+        const totalSections = 8;
+
+        function showSection(sectionIndex) {
+            // Hide all sections
+            const sections = document.querySelectorAll('.section-content');
+            sections.forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // Show target section
+            const targetSection = document.getElementById(`section-${sectionIndex}`);
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
+
+            // Update tab states
+            const tabs = document.querySelectorAll('.section-tab');
+            tabs.forEach((tab, index) => {
+                tab.classList.remove('active');
+                if (index === sectionIndex) {
+                    tab.classList.add('active');
+                }
+                // Mark previous sections as completed
+                if (index < sectionIndex) {
+                    tab.classList.add('completed');
+                    tab.querySelector('span').textContent = '✓';
+                }
+            });
+
+            currentSection = sectionIndex;
+            updateProgress();
+        }
+
+        function nextSection() {
+            if (currentSection < totalSections - 1) {
+                showSection(currentSection + 1);
+            }
+        }
+
+        function prevSection() {
+            if (currentSection > 0) {
+                showSection(currentSection - 1);
+            }
+        }
+
+        function updateProgress() {
+            const progressPercentage = Math.round(((currentSection + 1) / totalSections) * 100);
+            const progressFill = document.querySelector('.progress-fill');
+            const progressText = document.querySelector('.progress-percentage');
+            
+            if (progressFill) {
+                progressFill.style.width = progressPercentage + '%';
+            }
+            if (progressText) {
+                progressText.textContent = `${currentSection + 1} of ${totalSections} sections completed (${progressPercentage}%)`;
+            }
+        }
+
+        function selectRadio(element) {
+            const radioGroup = element.closest('.radio-group');
+            if (radioGroup) {
+                radioGroup.querySelectorAll('.radio-option').forEach(option => {
+                    option.classList.remove('selected');
+                });
+                element.classList.add('selected');
+                
+                // Update the actual radio button
+                const radio = element.querySelector('input[type="radio"]');
+                if (radio) {
+                    radio.checked = true;
+                }
+            }
+        }
+
+        function toggleDependent(dependentId, show) {
+            const dependent = document.getElementById(dependentId);
+            if (dependent) {
+                if (show) {
+                    dependent.classList.add('show');
+                } else {
+                    dependent.classList.remove('show');
+                }
+            }
+        }
+
+        function updateFormula() {
+            const matchPercentage = document.querySelector('#section-0 input[type="number"]').value || '0';
+            const compensationLimit = document.querySelectorAll('#section-0 input[type="number"]')[1].value || '0';
+            const formulaDisplay = document.getElementById('formula-display');
+            
+            if (formulaDisplay) {
+                formulaDisplay.textContent = `Current Formula: ${matchPercentage}% match on first ${compensationLimit}% of compensation contributed`;
+            }
+        }
+
+        function submitForm() {
+            alert('Questionnaire submitted successfully! Your responses will be used for compliance testing and Form 5500 preparation.');
+        }
+
+        // Initialize the form
+        document.addEventListener('DOMContentLoaded', function() {
+            showSection(0);
+            updateProgress();
+        });
+    </script>
+</body>
+</html>
