@@ -1,3 +1,4 @@
+print("Starting main.py...")
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict

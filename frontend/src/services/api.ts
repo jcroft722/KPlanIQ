@@ -31,18 +31,26 @@ export const getUploadDetails = async (fileId: number): Promise<FileUpload> => {
 };
 
 export const updateFileMappings = async (fileId: number, mappings: { [key: string]: ColumnMapping }): Promise<FileUpload> => {
-  const response = await api.put<FileUpload>(`/files/uploads/${fileId}/mappings`, { mappings });
+  // Convert the mappings to the format expected by the backend
+  const formattedMappings: { [key: string]: string } = {};
+  Object.entries(mappings).forEach(([sourceCol, mapping]) => {
+    if (mapping.target_column) {
+      formattedMappings[sourceCol] = mapping.target_column;
+    }
+  });
+  
+  const response = await api.put<FileUpload>(`/files/${fileId}/mappings`, formattedMappings);
   return response.data;
 };
 
 export const processFile = async (fileId: number): Promise<FileUpload> => {
-  const response = await api.post<FileUpload>(`/files/uploads/${fileId}/process`);
+  const response = await api.post<FileUpload>(`/files/${fileId}/process`);
   return response.data;
 };
 
 export const getFileMappings = async (fileId: number) => {
-    const response = await axios.get(`${API_BASE_URL}/files/${fileId}/mappings`);
-    return response.data;
+  const response = await api.get(`/files/${fileId}/mappings`);
+  return response.data;
 };
 
 // New portion for Compliance Tests
@@ -53,11 +61,11 @@ export const runComplianceTests = async (fileId: number) => {
 };
 
 export const getComplianceHistory = async () => {
-    const response = await axios.get(`${API_BASE_URL}/files/compliance-history`);
-    return response.data;
+  const response = await api.get('/compliance/history');
+  return response.data;
 };
 
 export const getComplianceResults = async () => {
-    const response = await axios.get(`${API_BASE_URL}/files/compliance-results`);
-    return response.data;
+  const response = await api.get('/compliance/results');
+  return response.data;
 };
