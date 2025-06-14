@@ -1,7 +1,7 @@
 print("Starting main.py...")
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Dict
+from typing import List, Dict, Optional
 import os
 from datetime import datetime
 import pandas as pd
@@ -13,8 +13,12 @@ from app.models.models import (
     FileUpload,
     EmployeeData,
     RawEmployeeData,
-    ColumnMapping
+    ColumnMapping,
+    ValidationResult,
+    DataQualityScore,
+    ValidationRun
 )
+from app.services.validation_engine import DataValidationEngine
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -471,4 +475,234 @@ async def process_file_endpoint(file_id: int, db: Session = Depends(get_db)):
         logger.error(f"Error processing file: {str(e)}")
         file_upload.status = "failed"
         db.commit()
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/files/{file_id}/validate")
+async def run_data_validation(file_id: int, db: Session = Depends(get_db)):
+    """Run comprehensive data validation on uploaded file"""
+    try:
+        # Get file upload record
+        file_upload = db.query(FileUpload).filter(FileUpload.id == file_id).first()
+        if not file_upload:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Create validation run record
+        validation_run = ValidationRun(
+            file_upload_id=file_id,
+            status="running",
+            validation_config={"version": "1.0", "checks": "comprehensive"}
+        )
+        db.add(validation_run)
+        db.commit()
+        db.refresh(validation_run)
+        
+        # Load the data
+        file_path = file_upload.file_path
+        if file_upload.filename.endswith('.csv'):
+            df = pd.read_csv(file_path)
+        else:
+            df = pd.read_excel(file_path)
+        
+        # Run validation
+        start_time = datetime.now()
+        validation_engine = DataValidationEngine(df, file_id, db)
+        issues, quality_score = validation_engine.run_comprehensive_validation()
+        
+        # Save validation results
+        validation_engine.save_validation_results()
+        
+        # Update validation run
+        end_time = datetime.now()
+        processing_time = (end_time - start_time).total_seconds()
+        
+        validation_run.status = "completed"
+        validation_run.completed_at = end_time
+        validation_run.processing_time_seconds = processing_time
+        validation_run.total_issues_found = len(issues)
+        validation_run.data_quality_score = quality_score
+        validation_run.can_proceed_to_compliance = len([i for i in issues if i.issue_type.value == "critical"]) == 0
+        
+        db.commit()
+        
+        return {
+            "validation_run_id": validation_run.id,
+            "status": "completed",
+            "issues_found": len(issues),
+            "data_quality_score": quality_score,
+            "can_proceed_to_compliance": validation_run.can_proceed_to_compliance,
+            "processing_time": processing_time
+        }
+        
+    except Exception as e:
+        logger.error(f"Error running validation: {str(e)}")
+        
+        # Update validation run with error
+        validation_run.status = "failed"
+        validation_run.error_message = str(e)
+        validation_run.completed_at = datetime.now()
+        db.commit()
+        
+        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
+
+@app.get("/api/files/{file_id}/validation-results")
+async def get_validation_results(file_id: int, db: Session = Depends(get_db)):
+    """Get validation results for a file"""
+    try:
+        # Get file info
+        file_upload = db.query(FileUpload).filter(FileUpload.id == file_id).first()
+        if not file_upload:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Get validation results
+        validation_results = db.query(ValidationResult).filter(
+            ValidationResult.file_upload_id == file_id
+        ).order_by(ValidationResult.created_at.desc()).all()
+        
+        # Get data quality score
+        quality_score = db.query(DataQualityScore).filter(
+            DataQualityScore.file_upload_id == file_id
+        ).first()
+        
+        # Format response
+        issues = []
+        for result in validation_results:
+            issues.append({
+                "id": result.id,
+                "issue_type": result.issue_type,
+                "severity": result.severity,
+                "category": result.category,
+                "title": result.title,
+                "description": result.description,
+                "affected_rows": result.affected_rows or [],
+                "affected_employees": result.affected_employees,
+                "suggested_action": result.suggested_action,
+                "auto_fixable": result.auto_fixable,
+                "is_resolved": result.is_resolved,
+                "confidence_score": float(result.confidence_score) if result.confidence_score else 0.0,
+                "details": result.details or {},
+                "created_at": result.created_at.isoformat()
+            })
+        
+        return {
+            "file_id": file_id,
+            "file_name": file_upload.original_filename,
+            "issues": issues,
+            "file_stats": {
+                "rows": file_upload.row_count,
+                "columns": file_upload.column_count
+            },
+            "quality_score": {
+                "overall": float(quality_score.overall_score) if quality_score else 0.0,
+                "completeness": float(quality_score.completeness_score) if quality_score else 0.0,
+                "consistency": float(quality_score.consistency_score) if quality_score else 0.0,
+                "accuracy": float(quality_score.accuracy_score) if quality_score else 0.0,
+                "critical_issues": quality_score.critical_issues if quality_score else 0,
+                "warning_issues": quality_score.warning_issues if quality_score else 0,
+                "anomaly_issues": quality_score.anomaly_issues if quality_score else 0
+            } if quality_score else None
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting validation results: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/files/{file_id}/auto-fix")
+async def auto_fix_issues(
+    file_id: int, 
+    issue_ids: List[int] = None,
+    db: Session = Depends(get_db)
+):
+    """Apply automatic fixes to validation issues"""
+    try:
+        # Get file upload record
+        file_upload = db.query(FileUpload).filter(FileUpload.id == file_id).first()
+        if not file_upload:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Load the data
+        import pandas as pd
+        file_path = file_upload.file_path
+        if file_upload.filename.endswith('.csv'):
+            df = pd.read_csv(file_path)
+        else:
+            df = pd.read_excel(file_path)
+        
+        # Create validation engine
+        validation_engine = DataValidationEngine(df, file_id, db)
+        
+        # Run validation to get current issues
+        issues, _ = validation_engine.run_comprehensive_validation()
+        
+        # Apply auto-fixes
+        corrected_df = validation_engine.apply_auto_fixes(issue_ids)
+        
+        # Save corrected file
+        corrected_filename = f"corrected_{file_upload.filename}"
+        corrected_path = f"uploads/{corrected_filename}"
+        
+        if file_upload.filename.endswith('.csv'):
+            corrected_df.to_csv(corrected_path, index=False)
+        else:
+            corrected_df.to_excel(corrected_path, index=False)
+        
+        # Update file record
+        file_upload.file_path = corrected_path
+        file_upload.filename = corrected_filename
+        
+        # Mark issues as resolved
+        if issue_ids:
+            db.query(ValidationResult).filter(
+                ValidationResult.id.in_(issue_ids)
+            ).update({
+                "is_resolved": True,
+                "resolved_at": datetime.now(),
+                "resolution_notes": "Auto-fixed"
+            })
+        
+        db.commit()
+        
+        # Re-run validation on corrected data
+        validation_engine_new = DataValidationEngine(corrected_df, file_id, db)
+        new_issues, new_quality_score = validation_engine_new.run_comprehensive_validation()
+        validation_engine_new.save_validation_results()
+        
+        return {
+            "status": "completed",
+            "corrected_file": corrected_filename,
+            "issues_fixed": len(issues) - len(new_issues),
+            "remaining_issues": len(new_issues),
+            "new_quality_score": new_quality_score
+        }
+        
+    except Exception as e:
+        logger.error(f"Error applying auto-fixes: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/files/{file_id}/data-quality-score")
+async def get_data_quality_score(file_id: int, db: Session = Depends(get_db)):
+    """Get data quality score for a file"""
+    try:
+        quality_score = db.query(DataQualityScore).filter(
+            DataQualityScore.file_upload_id == file_id
+        ).first()
+        
+        if not quality_score:
+            return {"message": "No quality score available. Run validation first."}
+        
+        return {
+            "file_id": file_id,
+            "overall": float(quality_score.overall_score),
+            "completeness": float(quality_score.completeness_score),
+            "consistency": float(quality_score.consistency_score),
+            "accuracy": float(quality_score.accuracy_score),
+            "anomaly_count": quality_score.anomaly_issues,
+            "critical_issues": quality_score.critical_issues,
+            "warning_issues": quality_score.warning_issues,
+            "total_issues": quality_score.total_issues,
+            "auto_fixable": quality_score.auto_fixable_issues,
+            "last_updated": quality_score.updated_at.isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting quality score: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -16,6 +16,7 @@ from app.models.models import (
 )
 from app.routers import files
 
+
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -43,3 +44,4 @@ app.include_router(files.router, prefix="/api/files", tags=["files"])
 @app.get("/")
 def read_root():
     return {"message": "Welcome to KPlan API"} 
+

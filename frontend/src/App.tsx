@@ -6,6 +6,7 @@ import { FileUploadError } from './types/files';
 import ColumnMapper from './components/ColumnMapper';
 import Dashboard from './components/Dashboard';
 import { ComplianceTestingWorkflow } from './components/ComplianceTestingWorkflow';
+import ValidationResults from './components/ValidationResults';
 import './App.css';
 
 interface DataIssue {
@@ -266,31 +267,13 @@ const App: React.FC = () => {
             )}
 
             {currentStep === 3 && uploadedFile && (
-              <div className="validation-section">
-                <h2>Data Validation</h2>
-                <div className="validation-content">
-                  <div className="validation-summary">
-                    <p>File: {uploadedFile.original_filename}</p>
-                    <p>Rows: {uploadedFile.row_count}</p>
-                    <p>Columns: {uploadedFile.column_count}</p>
-                    <p>Status: {uploadedFile.status}</p>
-                  </div>
-                  {error && <div className="error-message">{error}</div>}
-                  {isProcessing && <div className="loading">Processing data...</div>}
-                </div>
-                <div className="navigation-buttons">
-                  <button className="btn btn-secondary" onClick={handleBack}>
-                    Back
-                  </button>
-                  <button 
-                    className="btn btn-primary"
-                    onClick={handleNext}
-                    disabled={isProcessing || !!error}
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
+              <ValidationResults
+                fileId={uploadedFile.id}
+                onProceedToCompliance={() => {
+                  setActiveTab('compliance');
+                  setCurrentStep(1);
+                }}
+              />
             )}
 
             {currentStep === 4 && uploadedFile && (

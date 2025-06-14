@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, JSON, ForeignKey, Boolean, Numeric
+from sqlalchemy import Column, Integer, String, DateTime, Text, JSON, ForeignKey, Boolean, Numeric, Float, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from ..core.database import Base
+import enum
 
 from datetime import datetime
 
@@ -54,6 +55,9 @@ class FileUpload(Base):
     column_mappings = relationship("ColumnMapping", back_populates="file_upload", cascade="all, delete")
     compliance_runs = relationship("ComplianceTestRun", back_populates="file")
     processing_jobs = relationship("ProcessingJob", back_populates="file_upload")
+    validation_results = relationship("ValidationResult", back_populates="file_upload")
+    data_quality_scores = relationship("DataQualityScore", back_populates="file_upload")
+    validation_runs = relationship("ValidationRun", back_populates="file_upload")
 
 class MappingTemplate(Base):
     __tablename__ = "mapping_templates"
@@ -187,3 +191,67 @@ class ComplianceTestResult(Base):
     
     # Relationship back to test run
     test_run = relationship("ComplianceTestRun", back_populates="test_results")
+
+class ValidationIssueType(str, enum.Enum):
+    CRITICAL = "critical"
+    WARNING = "warning"
+    INFO = "info"
+
+class ValidationResult(Base):
+    __tablename__ = "validation_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    file_upload_id = Column(Integer, ForeignKey("file_uploads.id"))
+    issue_type = Column(Enum(ValidationIssueType))
+    severity = Column(String)
+    category = Column(String)
+    title = Column(String)
+    description = Column(String)
+    affected_rows = Column(JSON, nullable=True)
+    affected_employees = Column(JSON, nullable=True)
+    suggested_action = Column(String, nullable=True)
+    auto_fixable = Column(Boolean, default=False)
+    is_resolved = Column(Boolean, default=False)
+    confidence_score = Column(Float, nullable=True)
+    details = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    resolved_at = Column(DateTime, nullable=True)
+    resolution_notes = Column(String, nullable=True)
+
+    file_upload = relationship("FileUpload", back_populates="validation_results")
+
+class DataQualityScore(Base):
+    __tablename__ = "data_quality_scores"
+
+    id = Column(Integer, primary_key=True, index=True)
+    file_upload_id = Column(Integer, ForeignKey("file_uploads.id"))
+    overall_score = Column(Float)
+    completeness_score = Column(Float)
+    consistency_score = Column(Float)
+    accuracy_score = Column(Float)
+    critical_issues = Column(Integer, default=0)
+    warning_issues = Column(Integer, default=0)
+    anomaly_issues = Column(Integer, default=0)
+    total_issues = Column(Integer, default=0)
+    auto_fixable_issues = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    file_upload = relationship("FileUpload", back_populates="data_quality_scores")
+
+class ValidationRun(Base):
+    __tablename__ = "validation_runs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    file_upload_id = Column(Integer, ForeignKey("file_uploads.id"))
+    status = Column(String)  # running, completed, failed
+    validation_config = Column(JSON)
+    started_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
+    processing_time_seconds = Column(Float, nullable=True)
+    total_issues_found = Column(Integer, default=0)
+    data_quality_score = Column(Float, nullable=True)
+    can_proceed_to_compliance = Column(Boolean, default=False)
+    error_message = Column(String, nullable=True)
+
+    file_upload = relationship("FileUpload", back_populates="validation_runs")

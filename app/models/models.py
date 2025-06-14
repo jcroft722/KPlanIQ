@@ -1,7 +1,9 @@
-from sqlalchemy import Column, Integer, String, Float, Date, Boolean, DateTime, JSON, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Date, Boolean, DateTime, JSON, ForeignKey, Text, Numeric, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
+from sqlalchemy.sql import func
+
 
 class FileUpload(Base):
     __tablename__ = "file_uploads"
@@ -23,6 +25,10 @@ class FileUpload(Base):
     raw_data = relationship("RawEmployeeData", back_populates="file_upload", cascade="all, delete")
     employee_data = relationship("EmployeeData", back_populates="file_upload", cascade="all, delete")
     column_mappings = relationship("ColumnMapping", back_populates="file_upload", cascade="all, delete")
+    validation_results = relationship("ValidationResult", back_populates="file_upload", cascade="all, delete")
+    data_quality_score = relationship("DataQualityScore", back_populates="file_upload", uselist=False, cascade="all, delete")
+    validation_runs = relationship("ValidationRun", back_populates="file_upload", cascade="all, delete")
+
 
 class RawEmployeeData(Base):
     __tablename__ = "raw_employee_data"
@@ -86,3 +92,124 @@ class ColumnMapping(Base):
 
     # Relationships
     file_upload = relationship("FileUpload", back_populates="column_mappings") 
+
+
+class ValidationResult(Base):
+    """
+    Store comprehensive validation results for uploaded files
+    Integrates with existing FileUpload model
+    """
+    __tablename__ = "validation_results"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    file_upload_id = Column(Integer, ForeignKey("file_uploads.id"), nullable=False)
+    
+    # Issue classification
+    issue_type = Column(String(20), nullable=False)  # 'critical', 'warning', 'anomaly'
+    severity = Column(String(10), nullable=False)    # 'high', 'medium', 'low'
+    category = Column(String(50), nullable=False)    # 'missing_data', 'format_error', etc.
+    
+    # Issue details
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=False)
+    suggested_action = Column(Text, nullable=False)
+    
+    # Affected data
+    affected_rows = Column(JSON)  # List of row indices
+    affected_employees = Column(Integer, default=0)
+    
+    # Fix information
+    auto_fixable = Column(Boolean, default=False)
+    is_resolved = Column(Boolean, default=False)
+    resolved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    resolved_at = Column(DateTime, nullable=True)
+    resolution_notes = Column(Text, nullable=True)
+    
+    # Quality metrics
+    confidence_score = Column(Numeric(5, 2), default=1.0)  # 0.0 - 1.0
+    
+    # Additional details (JSON for flexibility)
+    details = Column(JSON)  # Store field-specific details, thresholds, etc.
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    file_upload = relationship("FileUpload", back_populates="validation_results")
+    resolved_by_user = relationship("User", foreign_keys=[resolved_by])
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index('idx_validation_file_type', 'file_upload_id', 'issue_type'),
+        Index('idx_validation_severity', 'severity'),
+        Index('idx_validation_resolved', 'is_resolved'),
+    )
+
+class DataQualityScore(Base):
+    """
+    Store overall data quality metrics for files
+    Calculated by ValidationEngine
+    """
+    __tablename__ = "data_quality_scores"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    file_upload_id = Column(Integer, ForeignKey("file_uploads.id"), nullable=False)
+    
+    # Overall quality metrics (0-100 scale)
+    overall_score = Column(Numeric(5, 2), nullable=False)
+    completeness_score = Column(Numeric(5, 2), nullable=False)
+    consistency_score = Column(Numeric(5, 2), nullable=False)
+    accuracy_score = Column(Numeric(5, 2), nullable=False)
+    
+    # Issue counts
+    critical_issues = Column(Integer, default=0)
+    warning_issues = Column(Integer, default=0)
+    anomaly_issues = Column(Integer, default=0)
+    total_issues = Column(Integer, default=0)
+    
+    # Auto-fix statistics
+    auto_fixable_issues = Column(Integer, default=0)
+    auto_fixed_issues = Column(Integer, default=0)
+    
+    # Metadata
+    analysis_version = Column(String(20), default="1.0")  # Track validation engine version
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    file_upload = relationship("FileUpload", back_populates="data_quality_score")
+
+class ValidationRun(Base):
+    """
+    Track validation runs for audit purposes
+    Links multiple ValidationResults together
+    """
+    __tablename__ = "validation_runs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    file_upload_id = Column(Integer, ForeignKey("file_uploads.id"), nullable=False)
+    
+    # Run details
+    status = Column(String(20), default="running")  # 'running', 'completed', 'failed'
+    total_issues_found = Column(Integer, default=0)
+    processing_time_seconds = Column(Numeric(8, 2))
+    
+    # Configuration
+    validation_config = Column(JSON)  # Store validation settings used
+    
+    # Results summary
+    data_quality_score = Column(Numeric(5, 2))
+    can_proceed_to_compliance = Column(Boolean, default=False)
+    
+    # Error handling
+    error_message = Column(Text, nullable=True)
+    
+    # Timestamps
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Relationships
+    file_upload = relationship("FileUpload", back_populates="validation_runs")

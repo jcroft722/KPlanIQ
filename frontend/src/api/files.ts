@@ -76,3 +76,25 @@ export const runComplianceTests = async (fileId: number) => {
 
   return response.json();
 };
+
+export const runDataValidation = async (fileId: number) => {
+  const response = await api.post(`/files/${fileId}/validate`);
+  return response.data;
+};
+
+export const getValidationResults = async (fileId: number) => {
+  const response = await api.get(`/files/${fileId}/validation-results`);
+  return response.data;
+};
+
+export const autoFixIssues = async (fileId: number, issueIds?: number[]) => {
+  const response = await api.post(`/files/${fileId}/auto-fix`, { 
+    issue_ids: issueIds 
+  });
+  return response.data;
+};
+
+export const getDataQualityScore = async (fileId: number) => {
+  const response = await api.get(`/files/${fileId}/data-quality-score`);
+  return response.data;
+};

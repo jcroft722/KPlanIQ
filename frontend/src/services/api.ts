@@ -69,3 +69,21 @@ export const getComplianceResults = async () => {
   const response = await api.get('/compliance/results');
   return response.data;
 };
+
+// Validation API functions
+export const getValidationResults = async (fileId: number) => {
+  const response = await axios.get(`${API_BASE_URL}/files/${fileId}/validation-results`);
+  return response.data;
+};
+
+export const autoFixIssues = async (fileId: number, issueIds: number[]) => {
+  const response = await axios.post(`${API_BASE_URL}/files/${fileId}/auto-fix`, {
+    issue_ids: issueIds
+  });
+  return response.data;
+};
+
+export const getDataQualityScore = async (fileId: number) => {
+  const response = await axios.get(`${API_BASE_URL}/files/${fileId}/quality-score`);
+  return response.data;
+};
