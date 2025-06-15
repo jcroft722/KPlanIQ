@@ -82,8 +82,3 @@ export const autoFixIssues = async (fileId: number, issueIds: number[]) => {
   });
   return response.data;
 };
-
-export const getDataQualityScore = async (fileId: number) => {
-  const response = await axios.get(`${API_BASE_URL}/files/${fileId}/quality-score`);
-  return response.data;
-};

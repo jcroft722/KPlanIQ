@@ -61,14 +61,14 @@ class DataValidationEngine:
     Integrates with existing KPlanIQ database models and API structure
     """
     
-    def __init__(self, df: pd.DataFrame, file_upload_id: int, db: Session, historical_data: Optional[pd.DataFrame] = None):
+    def __init__(self, df: pd.DataFrame, file_upload_id: int, db: Session, validation_run: Optional[ValidationRun] = None, historical_data: Optional[pd.DataFrame] = None):
         self.df = df.copy()
         self.file_upload_id = file_upload_id
         self.db = db
         self.historical_data = historical_data
         self.validation_issues: List[ValidationIssue] = []
         self.data_quality_score = 100.0
-        self.validation_run = None
+        self.validation_run = validation_run
         
         # Load existing validation results if any
         self.existing_results = db.query(ValidationResult).filter(
@@ -83,17 +83,6 @@ class DataValidationEngine:
         
         # Clear previous results
         self.validation_issues = []
-        
-        # Create validation run record
-        self.validation_run = ValidationRun(
-            file_upload_id=self.file_upload_id,
-            status="running",
-            validation_config={"version": "1.0", "checks": "comprehensive"},
-            started_at=datetime.now()
-        )
-        self.db.add(self.validation_run)
-        self.db.commit()
-        self.db.refresh(self.validation_run)
         
         try:
             # Critical validation checks (must pass)
@@ -117,23 +106,24 @@ class DataValidationEngine:
             # Calculate overall data quality score
             self._calculate_data_quality_score()
             
-            # Update validation run status
-            self.validation_run.status = "completed"
-            self.validation_run.completed_at = datetime.now()
-            self.validation_run.total_issues_found = len(self.validation_issues)
-            self.validation_run.data_quality_score = self.data_quality_score
-            self.validation_run.can_proceed_to_compliance = not any(
-                (getattr(i, 'issue_type', None) == 'critical' or getattr(i, 'issue_type', None) == 'CRITICAL') and not getattr(i, 'is_resolved', False)
-                for i in self.validation_issues
-            )
-            self.db.commit()
+            # Update validation run status if it exists
+            if self.validation_run:
+                self.validation_run.status = "completed"
+                self.validation_run.completed_at = datetime.now()
+                self.validation_run.total_issues_found = len(self.validation_issues)
+                self.validation_run.data_quality_score = self.data_quality_score
+                self.validation_run.can_proceed_to_compliance = not any(
+                    (getattr(i, 'issue_type', None) == 'critical' or getattr(i, 'issue_type', None) == 'CRITICAL') and not getattr(i, 'is_resolved', False)
+                    for i in self.validation_issues
+                )
+                self.db.commit()
             
             logger.info(f"Validation complete. Found {len(self.validation_issues)} issues. Quality score: {self.data_quality_score}")
             
             return self.validation_issues, self.data_quality_score
             
         except Exception as e:
-            # Update validation run with error
+            # Update validation run with error if it exists
             if self.validation_run:
                 self.validation_run.status = "failed"
                 self.validation_run.error_message = str(e)

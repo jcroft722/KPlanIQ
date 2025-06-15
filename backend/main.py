@@ -7,6 +7,7 @@ from datetime import datetime
 import pandas as pd
 import io
 import logging
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db, Base, engine
 from app.models.models import (
@@ -412,6 +413,17 @@ async def process_file_endpoint(file_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="File not found")
     
     try:
+        # Load the data into a DataFrame
+        if file_upload.filename.endswith('.csv'):
+            df = pd.read_csv(file_upload.file_path)
+        else:
+            df = pd.read_excel(file_upload.file_path)
+
+        # Trigger validation process
+        validation_engine = DataValidationEngine(df, file_id, db)
+        issues, quality_score = validation_engine.run_comprehensive_validation()
+        validation_engine.save_validation_results()
+        
         # Get the raw data records
         raw_records = db.query(RawEmployeeData).filter(RawEmployeeData.file_upload_id == file_id).all()
         
@@ -481,43 +493,58 @@ async def process_file_endpoint(file_id: int, db: Session = Depends(get_db)):
 async def run_data_validation(file_id: int, db: Session = Depends(get_db)):
     """Run comprehensive data validation on uploaded file"""
     try:
+        logger.info(f"Starting validation for file {file_id}")
+        
         # Get file upload record
         file_upload = db.query(FileUpload).filter(FileUpload.id == file_id).first()
         if not file_upload:
+            logger.error(f"File not found: {file_id}")
             raise HTTPException(status_code=404, detail="File not found")
         
+        logger.info(f"Creating validation run for file {file_id}")
         # CREATE VALIDATION RUN RECORD
         validation_run = ValidationRun(
             file_upload_id=file_id,
             status="running",
-            validation_config={"version": "1.0", "checks": "comprehensive"}
+            validation_config={"version": "1.0", "checks": "comprehensive"},
+            started_at=datetime.now()
         )
         db.add(validation_run)
         db.commit()
         db.refresh(validation_run)
+        logger.info(f"Created validation run ID: {validation_run.id}")
         
         try:
             # Load the data
             if not os.path.exists(file_upload.file_path):
+                logger.error(f"File not found at path: {file_upload.file_path}")
                 raise HTTPException(status_code=404, detail=f"File not found at path: {file_upload.file_path}")
                 
+            logger.info(f"File path: {file_upload.file_path}")
+            logger.info(f"Loading file from {file_upload.file_path}")
             if file_upload.filename.endswith('.csv'):
                 df = pd.read_csv(file_upload.file_path)
             else:
                 df = pd.read_excel(file_upload.file_path)
             
+            logger.info(f"Running validation engine on file with {len(df)} rows")
             # Run validation
             start_time = datetime.now()
             validation_engine = DataValidationEngine(df, file_id, db)
+#validation_engine = DataValidationEngine(df, file_id, db, validation_run=validation_run)
             issues, quality_score = validation_engine.run_comprehensive_validation()
             
+            logger.info(f"Validation complete. Found {len(issues)} issues. Quality score: {quality_score}")
+            
             # Save validation results
+            logger.info("Saving validation results to database")
             validation_engine.save_validation_results()
             
             # UPDATE VALIDATION RUN RECORD
             end_time = datetime.now()
             processing_time = (end_time - start_time).total_seconds()
             
+            logger.info(f"Updating validation run record. Quality score: {quality_score}")
             validation_run.status = "completed"
             validation_run.completed_at = end_time
             validation_run.processing_time_seconds = processing_time
@@ -526,6 +553,11 @@ async def run_data_validation(file_id: int, db: Session = Depends(get_db)):
             validation_run.can_proceed_to_compliance = len([i for i in issues if i.issue_type.value == "critical"]) == 0
             
             db.commit()
+            logger.info(f"Validation run completed and saved with ID: {validation_run.id}")
+            
+            # Verify the validation run was updated correctly
+            updated_run = db.query(ValidationRun).filter(ValidationRun.id == validation_run.id).first()
+            logger.info(f"Verified validation run status: {updated_run.status}, score: {updated_run.data_quality_score}")
             
             return {
                 "validation_run_id": validation_run.id,
@@ -538,12 +570,13 @@ async def run_data_validation(file_id: int, db: Session = Depends(get_db)):
             
         except Exception as e:
             # UPDATE VALIDATION RUN WITH ERROR
+            logger.error(f"Error in validation process: {str(e)}")
             validation_run.status = "failed"
             validation_run.error_message = str(e)
             validation_run.completed_at = datetime.now()
             db.commit()
+            logger.info(f"Updated validation run with failed status: {validation_run.id}")
             
-            logger.error(f"Error in validation: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
             
     except Exception as e:
@@ -727,6 +760,14 @@ async def get_data_quality_score(file_id: int, db: Session = Depends(get_db)):
 async def get_quality_score(file_id: int, db: Session = Depends(get_db)):
     """Get the data quality score for a file"""
     try:
+        # First check if the file exists
+        file_upload = db.query(FileUpload).filter(FileUpload.id == file_id).first()
+        if not file_upload:
+            return JSONResponse(
+                status_code=404,
+                content={"detail": "File not found"}
+            )
+            
         # Get the latest validation run for this file
         validation_run = db.query(ValidationRun).filter(
             ValidationRun.file_upload_id == file_id,
@@ -734,18 +775,49 @@ async def get_quality_score(file_id: int, db: Session = Depends(get_db)):
         ).order_by(ValidationRun.completed_at.desc()).first()
         
         if not validation_run:
-            raise HTTPException(status_code=404, detail="No completed validation run found for this file")
+            # Check if there's any validation run (even if not completed)
+            any_validation_run = db.query(ValidationRun).filter(
+                ValidationRun.file_upload_id == file_id
+            ).order_by(ValidationRun.started_at.desc()).first()
+            
+            message = "No completed validation run found for this file"
+            status = "not_validated"
+            
+            if any_validation_run:
+                message = f"Validation run exists but has status: {any_validation_run.status}"
+                status = any_validation_run.status
+            
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "detail": message,
+                    "file_id": file_id,
+                    "status": status,
+                    "suggestion": "Run validation first before requesting quality score"
+                }
+            )
+        
+        # Safely handle datetime
+        completed_at = None
+        if validation_run.completed_at:
+            try:
+                completed_at = validation_run.completed_at.isoformat()
+            except AttributeError:
+                completed_at = None
         
         return {
             "file_id": file_id,
-            "quality_score": validation_run.data_quality_score,
+            "quality_score": float(validation_run.data_quality_score) if validation_run.data_quality_score else 0.0,
             "validation_run_id": validation_run.id,
-            "completed_at": validation_run.completed_at
+            "completed_at": completed_at
         }
         
     except Exception as e:
         logger.error(f"Error getting quality score: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(e)}
+        )
 
 @app.get("/api/compliance/history")
 async def get_compliance_history(db: Session = Depends(get_db)):

@@ -12,7 +12,8 @@ from enum import Enum
 import re
 import logging
 from sqlalchemy.orm import Session
-from app.models.models import FileUpload, ValidationResult, EmployeeData
+from app.models.models import FileUpload, ValidationResult, EmployeeData, DataQualityScore
+
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,13 @@ class DataValidationEngine:
         """
         Run all validation checks and return issues with overall quality score
         """
-        logger.info(f"Starting comprehensive validation for file {self.file_upload_id}")
+        logger.info("Starting comprehensive validation process.")
+        logger.info("Clearing previous validation issues.")
+        logger.info("Running critical validation checks.")
+        logger.info("Running warning-level checks.")
+        logger.info("Running anomaly detection checks.")
+        logger.info("Running compliance-specific checks.")
+        logger.info("Calculating overall data quality score.")
         
         # Clear previous results
         self.validation_issues = []
@@ -805,18 +812,56 @@ class DataValidationEngine:
                 )
                 self.db.add(validation_result)
             
-            # Update file upload with data quality score
-            file_upload = self.db.query(FileUpload).filter(
-                FileUpload.id == self.file_upload_id
+            # Count issues by type
+            critical_count = len([i for i in self.validation_issues if i.issue_type == IssueType.CRITICAL])
+            warning_count = len([i for i in self.validation_issues if i.issue_type == IssueType.WARNING])
+            info_count = len([i for i in self.validation_issues if i.issue_type == IssueType.INFO])
+            auto_fixable_count = len([i for i in self.validation_issues if i.auto_fixable])
+            
+            # Create or update data quality score
+            existing_score = self.db.query(DataQualityScore).filter(
+                DataQualityScore.file_upload_id == self.file_upload_id
             ).first()
             
-            if file_upload:
-                # Add data quality score to file metadata if column exists
-                # This would require adding a data_quality_score column to FileUpload model
-                pass
+            # Calculate component scores (examples - adjust as needed)
+            completeness_score = self.data_quality_score * 0.95  # Simplified for this example
+            consistency_score = self.data_quality_score * 0.90
+            accuracy_score = self.data_quality_score * 0.92
+            
+            if existing_score:
+                # Update existing score
+                existing_score.overall_score = self.data_quality_score
+                existing_score.completeness_score = completeness_score
+                existing_score.consistency_score = consistency_score
+                existing_score.accuracy_score = accuracy_score
+                existing_score.critical_issues = critical_count
+                existing_score.warning_issues = warning_count
+                existing_score.anomaly_issues = info_count
+                existing_score.total_issues = len(self.validation_issues)
+                existing_score.auto_fixable_issues = auto_fixable_count
+                existing_score.analysis_version = "1.0"
+                logger.info(f"Updated data quality score: {self.data_quality_score}")
+            else:
+                # Create new quality score
+                new_score = DataQualityScore(
+                    file_upload_id=self.file_upload_id,
+                    overall_score=self.data_quality_score,
+                    completeness_score=completeness_score,
+                    consistency_score=consistency_score,
+                    accuracy_score=accuracy_score,
+                    critical_issues=critical_count,
+                    warning_issues=warning_count,
+                    anomaly_issues=info_count,
+                    total_issues=len(self.validation_issues),
+                    auto_fixable_issues=auto_fixable_count,
+                    auto_fixed_issues=0,
+                    analysis_version="1.0"
+                )
+                self.db.add(new_score)
+                logger.info(f"Created new data quality score: {self.data_quality_score}")
             
             self.db.commit()
-            logger.info(f"Saved {len(self.validation_issues)} validation results for file {self.file_upload_id}")
+            logger.info(f"Saved {len(self.validation_issues)} validation results and quality score for file {self.file_upload_id}")
             
         except Exception as e:
             self.db.rollback()

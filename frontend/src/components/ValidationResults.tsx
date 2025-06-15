@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { getValidationResults, autoFixIssues, getDataQualityScore } from '../services/api';
+
+import { getValidationResults, autoFixIssues } from '../services/api';
+import { runDataValidation, getDataQualityScore } from '../api/files';
 
 // Types that match the backend ValidationEngine
 export interface ValidationIssue {
@@ -15,21 +17,22 @@ export interface ValidationIssue {
   auto_fixable: boolean;
   is_resolved: boolean;
   confidence_score: number;
-  details?: Record<string, any>;
+  details?: any;
   created_at: string;
 }
 
 interface DataQualityScore {
+  file_id: number;
   overall: number;
   completeness: number;
   consistency: number;
   accuracy: number;
+  anomaly_count: number;
   critical_issues: number;
   warning_issues: number;
-  anomaly_issues: number;
   total_issues: number;
   auto_fixable: number;
-  last_updated: string;
+  last_updated: string | null;
 }
 
 interface ValidationResultsProps {
@@ -43,6 +46,7 @@ export const ValidationResults: React.FC<ValidationResultsProps> = ({ fileId, on
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedIssues, setSelectedIssues] = useState<number[]>([]);
+  const [isValidating, setIsValidating] = useState(false);
 
   useEffect(() => {
     loadValidationResults();
@@ -51,14 +55,42 @@ export const ValidationResults: React.FC<ValidationResultsProps> = ({ fileId, on
   const loadValidationResults = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
+      // First, run validation
+      console.log(`Running validation for file ${fileId}...`);
+      setIsValidating(true);
+      try {
+        await runDataValidation(fileId);
+        console.log('Validation complete, fetching results...');
+      } catch (err) {
+        console.error('Error running validation:', err);
+        throw new Error('Failed to run validation');
+      } finally {
+        setIsValidating(false);
+      }
+      
+      // Then fetch the results
       const [validationData, qualityData] = await Promise.all([
         getValidationResults(fileId),
-        getDataQualityScore(fileId)
+        getDataQualityScore(fileId).catch(err => {
+          console.warn('Could not fetch quality score:', err);
+          return null;
+        })
       ]);
-      setIssues(validationData.issues);
+      
+      console.log('Validation results:', validationData);
+      
+      if (validationData && validationData.issues) {
+        setIssues(validationData.issues);
+      } else {
+        setIssues([]);
+        console.warn('No issues found in validation data:', validationData);
+      }
+      
       setQualityScore(qualityData);
-      setError(null);
     } catch (err) {
+      console.error('Validation error:', err);
       setError(err instanceof Error ? err.message : 'Failed to load validation results');
     } finally {
       setLoading(false);
@@ -81,7 +113,11 @@ export const ValidationResults: React.FC<ValidationResultsProps> = ({ fileId, on
   const canProceedToCompliance = !issues.some(issue => issue.issue_type === 'critical' && !issue.is_resolved);
 
   if (loading) {
-    return <div className="loading">Loading validation results...</div>;
+    return (
+      <div className="loading">
+        {isValidating ? 'Running validation...' : 'Loading validation results...'}
+      </div>
+    );
   }
 
   return (
@@ -114,7 +150,7 @@ export const ValidationResults: React.FC<ValidationResultsProps> = ({ fileId, on
                 <h4>{issue.title}</h4>
                 <span className="severity">{issue.severity}</span>
               </div>
-              <p>{issue.description}</p>
+              <p className="description">{issue.description}</p>
               {issue.suggested_action && (
                 <p className="suggested-action">Suggested Action: {issue.suggested_action}</p>
               )}

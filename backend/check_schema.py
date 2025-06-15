@@ -5,13 +5,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlalchemy import create_engine, inspect
 from app.core.database import DATABASE_URL
 
-def check_validation_results_schema():
+def check_table_schema(table_name: str):
     engine = create_engine(DATABASE_URL)
     inspector = inspect(engine)
     
-    # Get columns for validation_results table
-    columns = inspector.get_columns('validation_results')
-    print("\nValidation Results Table Schema:")
+    # Get columns for the specified table
+    columns = inspector.get_columns(table_name)
+    print(f"\n{table_name} Table Schema:")
     print("-" * 50)
     for column in columns:
         print(f"Column: {column['name']}")
@@ -21,5 +21,9 @@ def check_validation_results_schema():
         print(f"Onupdate: {column.get('onupdate')}")
         print("-" * 30)
 
+def main():
+    check_table_schema('validation_results')
+    check_table_schema('validation_runs')
+
 if __name__ == "__main__":
-    check_validation_results_schema() 
+    main() 
