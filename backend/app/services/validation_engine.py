@@ -7,19 +7,19 @@ import pandas as pd
 import numpy as np
 from typing import List, Dict, Optional, Any, Tuple
 from datetime import datetime, timedelta
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 import re
 import logging
 from sqlalchemy.orm import Session
-from app.models.models import FileUpload, ValidationResult, EmployeeData, DataQualityScore, ValidationRun
+from app.models.models import FileUpload, ValidationResult, EmployeeData
 
 logger = logging.getLogger(__name__)
 
 class IssueType(Enum):
     CRITICAL = "critical"
-    WARNING = "warning" 
-    ANOMALY = "anomaly"
+    WARNING = "warning"
+    INFO = "info"
 
 class Severity(Enum):
     HIGH = "high"
@@ -30,25 +30,28 @@ class Category(Enum):
     MISSING_DATA = "missing_data"
     FORMAT_ERROR = "format_error"
     LOGIC_ERROR = "logic_error"
-    COMPENSATION = "compensation"
-    DEMOGRAPHICS = "demographics"
-    PATTERNS = "patterns"
-    COMPLIANCE = "compliance"
+    COMPLIANCE_ERROR = "compliance_error"
+    ANOMALY = "anomaly"
 
 @dataclass
 class ValidationIssue:
     """Represents a single validation issue found in the data"""
-    issue_type: IssueType
-    severity: Severity
-    category: Category
-    title: str
-    description: str
-    affected_rows: List[int]
-    affected_employees: int
-    suggested_action: str
+    id: Optional[int] = None
+    file_upload_id: Optional[int] = None
+    issue_type: IssueType = IssueType.INFO
+    severity: Severity = Severity.LOW
+    category: Category = Category.MISSING_DATA
+    title: str = ""
+    description: str = ""
+    affected_rows: List[int] = field(default_factory=list)
+    affected_employees: int = 0
+    suggested_action: str = ""
     auto_fixable: bool = False
-    confidence_score: float = 1.0
-    details: Dict[str, Any] = None
+    is_resolved: bool = False
+    confidence_score: float = 0.0
+    details: Dict[str, Any] = field(default_factory=dict)
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     def __post_init__(self):
         if self.details is None:
@@ -68,7 +71,6 @@ class DataValidationEngine:
         self.historical_data = historical_data
         self.validation_issues: List[ValidationIssue] = []
         self.data_quality_score = 100.0
-        self.validation_run = None
         
         # Load existing validation results if any
         self.existing_results = db.query(ValidationResult).filter(
@@ -84,63 +86,30 @@ class DataValidationEngine:
         # Clear previous results
         self.validation_issues = []
         
-        # Create validation run record
-        self.validation_run = ValidationRun(
-            file_upload_id=self.file_upload_id,
-            status="running",
-            validation_config={"version": "1.0", "checks": "comprehensive"},
-            started_at=datetime.now()
-        )
-        self.db.add(self.validation_run)
-        self.db.commit()
-        self.db.refresh(self.validation_run)
+        # Critical validation checks (must pass)
+        self._validate_required_fields()
+        self._validate_data_formats()
+        self._validate_cross_field_logic()
         
-        try:
-            # Critical validation checks (must pass)
-            self._validate_required_fields()
-            self._validate_data_formats()
-            self._validate_cross_field_logic()
-            
-            # Warning-level checks (should review)
-            self._detect_compensation_anomalies()
-            self._detect_demographic_inconsistencies()
-            self._detect_mass_events()
-            
-            # Anomaly detection (informational)
-            self._detect_statistical_outliers()
-            self._detect_pattern_anomalies()
-            self._detect_round_number_bias()
-            
-            # Compliance-specific checks
-            self._validate_compliance_readiness()
-            
-            # Calculate overall data quality score
-            self._calculate_data_quality_score()
-            
-            # Update validation run status
-            self.validation_run.status = "completed"
-            self.validation_run.completed_at = datetime.now()
-            self.validation_run.total_issues_found = len(self.validation_issues)
-            self.validation_run.data_quality_score = self.data_quality_score
-            self.validation_run.can_proceed_to_compliance = not any(
-                (getattr(i, 'issue_type', None) == 'critical' or getattr(i, 'issue_type', None) == 'CRITICAL') and not getattr(i, 'is_resolved', False)
-                for i in self.validation_issues
-            )
-            self.db.commit()
-            
-            logger.info(f"Validation complete. Found {len(self.validation_issues)} issues. Quality score: {self.data_quality_score}")
-            
-            return self.validation_issues, self.data_quality_score
-            
-        except Exception as e:
-            # Update validation run with error
-            if self.validation_run:
-                self.validation_run.status = "failed"
-                self.validation_run.error_message = str(e)
-                self.validation_run.completed_at = datetime.now()
-                self.db.commit()
-            logger.error(f"Validation failed: {str(e)}")
-            raise
+        # Warning-level checks (should review)
+        self._detect_compensation_anomalies()
+        self._detect_demographic_inconsistencies()
+        self._detect_mass_events()
+        
+        # Anomaly detection (informational)
+        self._detect_statistical_outliers()
+        self._detect_pattern_anomalies()
+        self._detect_round_number_bias()
+        
+        # Compliance-specific checks
+        self._validate_compliance_readiness()
+        
+        # Calculate overall data quality score
+        self._calculate_data_quality_score()
+        
+        logger.info(f"Validation complete. Found {len(self.validation_issues)} issues. Quality score: {self.data_quality_score}")
+        
+        return self.validation_issues, self.data_quality_score
     
     def _validate_required_fields(self):
         """Check for missing critical fields required for compliance testing"""
@@ -376,7 +345,7 @@ class DataValidationEngine:
             self.validation_issues.append(ValidationIssue(
                 issue_type=IssueType.WARNING,
                 severity=Severity.MEDIUM,
-                category=Category.DEMOGRAPHICS,
+                category=Category.ANOMALY,
                 title="Unreasonable Employee Ages",
                 description=f"{len(unreasonable_ages)} employees have ages outside the typical working range (16-90 years).",
                 affected_rows=unreasonable_ages,
@@ -412,7 +381,7 @@ class DataValidationEngine:
             self.validation_issues.append(ValidationIssue(
                 issue_type=IssueType.WARNING,
                 severity=Severity.MEDIUM,
-                category=Category.COMPENSATION,
+                category=Category.ANOMALY,
                 title="Unusual Compensation Amounts",
                 description=f"{len(unusual_comp)} employees have compensation outside typical range ($1,000 - $10,000,000).",
                 affected_rows=unusual_comp,
@@ -447,7 +416,7 @@ class DataValidationEngine:
             self.validation_issues.append(ValidationIssue(
                 issue_type=IssueType.WARNING,
                 severity=Severity.MEDIUM,
-                category=Category.COMPENSATION,
+                category=Category.ANOMALY,
                 title="Statistical Compensation Outliers",
                 description=f"{len(outliers)} employees have compensation significantly different from the group average.",
                 affected_rows=outlier_indices,
@@ -518,9 +487,9 @@ class DataValidationEngine:
         # Flag if more than 30% of employees have the same age
         if most_common_count / len(ages) > 0.3:
             self.validation_issues.append(ValidationIssue(
-                issue_type=IssueType.ANOMALY,
+                issue_type=IssueType.INFO,
                 severity=Severity.LOW,
-                category=Category.DEMOGRAPHICS,
+                category=Category.ANOMALY,
                 title="Unusual Age Clustering",
                 description=f"{most_common_count} employees ({most_common_count/len(ages)*100:.1f}%) are age {most_common_age}.",
                 affected_rows=[],
@@ -567,7 +536,7 @@ class DataValidationEngine:
             self.validation_issues.append(ValidationIssue(
                 issue_type=IssueType.WARNING,
                 severity=Severity.MEDIUM,
-                category=Category.DEMOGRAPHICS,
+                category=Category.ANOMALY,
                 title="Mass Termination Event",
                 description=f"{count} employees terminated on {date}. This may impact coverage testing.",
                 affected_rows=affected_rows,
@@ -603,7 +572,7 @@ class DataValidationEngine:
             self.validation_issues.append(ValidationIssue(
                 issue_type=IssueType.WARNING,
                 severity=Severity.LOW,
-                category=Category.DEMOGRAPHICS,
+                category=Category.ANOMALY,
                 title="Mass Hiring Event",
                 description=f"{count} employees hired on {date}. Verify this is accurate.",
                 affected_rows=affected_rows,
@@ -636,9 +605,9 @@ class DataValidationEngine:
             if len(outliers) > 0:
                 outlier_indices = outliers.index.tolist()
                 self.validation_issues.append(ValidationIssue(
-                    issue_type=IssueType.ANOMALY,
+                    issue_type=IssueType.INFO,
                     severity=Severity.LOW,
-                    category=Category.PATTERNS,
+                    category=Category.ANOMALY,
                     title=f"Statistical Outliers in {field}",
                     description=f"{len(outliers)} values in {field} are more than 3 standard deviations from the mean.",
                     affected_rows=outlier_indices,
@@ -676,9 +645,9 @@ class DataValidationEngine:
                 affected_rows = self.df[self.df[col] == most_common_value].index.tolist()
                 
                 self.validation_issues.append(ValidationIssue(
-                    issue_type=IssueType.ANOMALY,
+                    issue_type=IssueType.INFO,
                     severity=Severity.LOW,
-                    category=Category.PATTERNS,
+                    category=Category.ANOMALY,
                     title=f"Identical Values Pattern in {col}",
                     description=f"{most_common_count} employees ({most_common_count/non_null_count*100:.1f}%) have identical {col} values: {most_common_value}",
                     affected_rows=affected_rows,
@@ -714,9 +683,9 @@ class DataValidationEngine:
                 round_indices = round_numbers.index.tolist()
                 
                 self.validation_issues.append(ValidationIssue(
-                    issue_type=IssueType.ANOMALY,
+                    issue_type=IssueType.INFO,
                     severity=Severity.LOW,
-                    category=Category.PATTERNS,
+                    category=Category.ANOMALY,
                     title=f"Round Number Bias in {field}",
                     description=f"{round_percentage:.1f}% of {field} values end in 000, which is higher than typical.",
                     affected_rows=round_indices,
@@ -742,7 +711,7 @@ class DataValidationEngine:
             self.validation_issues.append(ValidationIssue(
                 issue_type=IssueType.WARNING,
                 severity=Severity.MEDIUM,
-                category=Category.COMPLIANCE,
+                category=Category.COMPLIANCE_ERROR,
                 title="HCE Determination Fields Missing",
                 description=f"Missing fields for HCE determination: {', '.join(missing_hce_fields)}",
                 affected_rows=[],
@@ -765,7 +734,7 @@ class DataValidationEngine:
             self.validation_issues.append(ValidationIssue(
                 issue_type=IssueType.WARNING,
                 severity=Severity.MEDIUM,
-                category=Category.COMPLIANCE,
+                category=Category.COMPLIANCE_ERROR,
                 title="Eligibility Testing Fields Missing",
                 description=f"Missing fields for eligibility testing: {', '.join(missing_eligibility_fields)}",
                 affected_rows=[],
@@ -800,8 +769,8 @@ class DataValidationEngine:
                     score -= 5
                 else:
                     score -= 2
-            elif issue.issue_type == IssueType.ANOMALY:
-                score -= 1  # Minor deduction for anomalies
+            elif issue.issue_type == IssueType.INFO:
+                score -= 1  # Minor deduction for info issues
         
         # Ensure score doesn't go below 0
         self.data_quality_score = max(0.0, score)
@@ -827,44 +796,31 @@ class DataValidationEngine:
                     affected_employees=issue.affected_employees,
                     suggested_action=issue.suggested_action,
                     auto_fixable=issue.auto_fixable,
+                    is_resolved=issue.is_resolved,
                     confidence_score=issue.confidence_score,
-                    details=issue.details
+                    details=issue.details,
+                    resolved_at=datetime.now() if issue.is_resolved else None,
+                    resolution_notes="Auto-fixed" if issue.is_resolved else None,
+                    resolved_by=None  # Set to None since we're not tracking user resolution yet
                 )
                 self.db.add(validation_result)
             
-            # Update or create data quality score
-            quality_score = self.db.query(DataQualityScore).filter(
-                DataQualityScore.file_upload_id == self.file_upload_id
+            # Update file upload with data quality score
+            file_upload = self.db.query(FileUpload).filter(
+                FileUpload.id == self.file_upload_id
             ).first()
             
-            if not quality_score:
-                quality_score = DataQualityScore(file_upload_id=self.file_upload_id)
-                self.db.add(quality_score)
-            
-            # Calculate scores based on validation issues
-            critical_issues = sum(1 for i in self.validation_issues if i.issue_type == IssueType.CRITICAL)
-            warning_issues = sum(1 for i in self.validation_issues if i.issue_type == IssueType.WARNING)
-            anomaly_issues = sum(1 for i in self.validation_issues if i.issue_type == IssueType.ANOMALY)
-            auto_fixable = sum(1 for i in self.validation_issues if i.auto_fixable)
-            
-            # Update quality score record
-            quality_score.overall_score = self.data_quality_score
-            quality_score.completeness_score = max(0, 100 - (critical_issues * 20))  # Simple scoring
-            quality_score.consistency_score = max(0, 100 - (warning_issues * 10))    # Simple scoring
-            quality_score.accuracy_score = max(0, 100 - (anomaly_issues * 5))        # Simple scoring
-            quality_score.critical_issues = critical_issues
-            quality_score.warning_issues = warning_issues
-            quality_score.anomaly_issues = anomaly_issues
-            quality_score.total_issues = len(self.validation_issues)
-            quality_score.auto_fixable_issues = auto_fixable
-            quality_score.analysis_version = "1.0"
+            if file_upload:
+                # Add data quality score to file metadata if column exists
+                # This would require adding a data_quality_score column to FileUpload model
+                pass
             
             self.db.commit()
-            logger.info(f"Saved {len(self.validation_issues)} validation results and quality score for file {self.file_upload_id}")
+            logger.info(f"Saved {len(self.validation_issues)} validation results for file {self.file_upload_id}")
             
         except Exception as e:
-            logger.error(f"Error saving validation results: {str(e)}")
             self.db.rollback()
+            logger.error(f"Error saving validation results: {str(e)}")
             raise
     
     def get_auto_fixable_issues(self) -> List[ValidationIssue]:
@@ -887,10 +843,16 @@ class DataValidationEngine:
             if issue.category == Category.FORMAT_ERROR:
                 if "Date Format" in issue.title:
                     corrected_df = self._auto_fix_date_format(corrected_df, issue)
+                    issue.is_resolved = True
                 elif "SSN Format" in issue.title:
                     corrected_df = self._auto_fix_ssn_format(corrected_df, issue)
+                    issue.is_resolved = True
                 elif "Numeric Format" in issue.title:
                     corrected_df = self._auto_fix_numeric_format(corrected_df, issue)
+                    issue.is_resolved = True
+        
+        # Update the original DataFrame with corrections
+        self.df = corrected_df
         
         return corrected_df
     

@@ -217,6 +217,7 @@ class ValidationResult(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     resolved_at = Column(DateTime, nullable=True)
     resolution_notes = Column(String, nullable=True)
+    resolved_by = Column(Integer, nullable=True)
 
     file_upload = relationship("FileUpload", back_populates="validation_results")
 

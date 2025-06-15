@@ -486,63 +486,50 @@ async def run_data_validation(file_id: int, db: Session = Depends(get_db)):
         if not file_upload:
             raise HTTPException(status_code=404, detail="File not found")
         
-        # Create validation run record
-        validation_run = ValidationRun(
-            file_upload_id=file_id,
-            status="running",
-            validation_config={"version": "1.0", "checks": "comprehensive"}
-        )
-        db.add(validation_run)
-        db.commit()
-        db.refresh(validation_run)
-        
-        # Load the data
-        file_path = file_upload.file_path
-        if file_upload.filename.endswith('.csv'):
-            df = pd.read_csv(file_path)
-        else:
-            df = pd.read_excel(file_path)
-        
-        # Run validation
-        start_time = datetime.now()
-        validation_engine = DataValidationEngine(df, file_id, db)
-        issues, quality_score = validation_engine.run_comprehensive_validation()
-        
-        # Save validation results
-        validation_engine.save_validation_results()
-        
-        # Update validation run
-        end_time = datetime.now()
-        processing_time = (end_time - start_time).total_seconds()
-        
-        validation_run.status = "completed"
-        validation_run.completed_at = end_time
-        validation_run.processing_time_seconds = processing_time
-        validation_run.total_issues_found = len(issues)
-        validation_run.data_quality_score = quality_score
-        validation_run.can_proceed_to_compliance = len([i for i in issues if i.issue_type.value == "critical"]) == 0
-        
-        db.commit()
-        
-        return {
-            "validation_run_id": validation_run.id,
-            "status": "completed",
-            "issues_found": len(issues),
-            "data_quality_score": quality_score,
-            "can_proceed_to_compliance": validation_run.can_proceed_to_compliance,
-            "processing_time": processing_time
-        }
-        
+        try:
+            # Load the data
+            if not os.path.exists(file_upload.file_path):
+                raise HTTPException(status_code=404, detail=f"File not found at path: {file_upload.file_path}")
+                
+            if file_upload.filename.endswith('.csv'):
+                df = pd.read_csv(file_upload.file_path)
+            else:
+                df = pd.read_excel(file_upload.file_path)
+            
+            # Run validation
+            start_time = datetime.now()
+            validation_engine = DataValidationEngine(df, file_id, db)
+            issues, quality_score = validation_engine.run_comprehensive_validation()
+            
+            # Save validation results
+            validation_engine.save_validation_results()
+            
+            # Get the validation run
+            validation_run = db.query(ValidationRun).filter(
+                ValidationRun.file_upload_id == file_id
+            ).order_by(ValidationRun.created_at.desc()).first()
+            
+            if not validation_run:
+                raise HTTPException(status_code=500, detail="Validation run not found")
+            
+            return {
+                "validation_run_id": validation_run.id,
+                "status": validation_run.status,
+                "issues_found": len(issues),
+                "data_quality_score": quality_score,
+                "can_proceed_to_compliance": validation_run.can_proceed_to_compliance,
+                "processing_time": validation_run.processing_time_seconds
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in validation: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
+            
     except Exception as e:
         logger.error(f"Error running validation: {str(e)}")
-        
-        # Update validation run with error
-        validation_run.status = "failed"
-        validation_run.error_message = str(e)
-        validation_run.completed_at = datetime.now()
-        db.commit()
-        
-        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
+        # Ensure we rollback any failed transaction
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/files/{file_id}/validation-results")
 async def get_validation_results(file_id: int, db: Session = Depends(get_db)):
@@ -607,11 +594,7 @@ async def get_validation_results(file_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/files/{file_id}/auto-fix")
-async def auto_fix_issues(
-    file_id: int, 
-    issue_ids: List[int] = None,
-    db: Session = Depends(get_db)
-):
+async def auto_fix_issues(file_id: int, db: Session = Depends(get_db)):
     """Apply automatic fixes to validation issues"""
     try:
         # Get file upload record
@@ -620,62 +603,51 @@ async def auto_fix_issues(
             raise HTTPException(status_code=404, detail="File not found")
         
         # Load the data
-        import pandas as pd
-        file_path = file_upload.file_path
+        if not os.path.exists(file_upload.file_path):
+            raise HTTPException(status_code=404, detail=f"File not found at path: {file_upload.file_path}")
+            
         if file_upload.filename.endswith('.csv'):
-            df = pd.read_csv(file_path)
+            df = pd.read_csv(file_upload.file_path)
         else:
-            df = pd.read_excel(file_path)
+            df = pd.read_excel(file_upload.file_path)
         
-        # Create validation engine
+        # Run validation and apply fixes
         validation_engine = DataValidationEngine(df, file_id, db)
-        
-        # Run validation to get current issues
-        issues, _ = validation_engine.run_comprehensive_validation()
+        issues, quality_score = validation_engine.run_comprehensive_validation()
         
         # Apply auto-fixes
-        corrected_df = validation_engine.apply_auto_fixes(issue_ids)
+        corrected_df = validation_engine.apply_auto_fixes()
         
-        # Save corrected file
-        corrected_filename = f"corrected_{file_upload.filename}"
-        corrected_path = f"uploads/{corrected_filename}"
-        
+        # Save corrected data back to the original file
         if file_upload.filename.endswith('.csv'):
-            corrected_df.to_csv(corrected_path, index=False)
+            corrected_df.to_csv(file_upload.file_path, index=False)
         else:
-            corrected_df.to_excel(corrected_path, index=False)
+            corrected_df.to_excel(file_upload.file_path, index=False)
         
-        # Update file record
-        file_upload.file_path = corrected_path
-        file_upload.filename = corrected_filename
+        # Update validation results
+        validation_engine.save_validation_results()
         
-        # Mark issues as resolved
-        if issue_ids:
-            db.query(ValidationResult).filter(
-                ValidationResult.id.in_(issue_ids)
-            ).update({
-                "is_resolved": True,
-                "resolved_at": datetime.now(),
-                "resolution_notes": "Auto-fixed"
-            })
-        
-        db.commit()
-        
-        # Re-run validation on corrected data
-        validation_engine_new = DataValidationEngine(corrected_df, file_id, db)
-        new_issues, new_quality_score = validation_engine_new.run_comprehensive_validation()
-        validation_engine_new.save_validation_results()
+        # Mark auto-fixed issues as resolved
+        for issue in issues:
+            if issue.auto_fixable:
+                db_issue = db.query(ValidationResult).filter(
+                    ValidationResult.file_upload_id == file_id,
+                    ValidationResult.title == issue.title
+                ).first()
+                if db_issue:
+                    db_issue.is_resolved = True
+                    db.commit()
         
         return {
-            "status": "completed",
-            "corrected_file": corrected_filename,
-            "issues_fixed": len(issues) - len(new_issues),
-            "remaining_issues": len(new_issues),
-            "new_quality_score": new_quality_score
+            "message": "Auto-fixes applied successfully",
+            "issues_fixed": len([i for i in issues if i.auto_fixable]),
+            "quality_score": quality_score
         }
         
     except Exception as e:
-        logger.error(f"Error applying auto-fixes: {str(e)}")
+        logger.error(f"Error in auto-fix: {str(e)}")
+        # Ensure we rollback any failed transaction
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/files/{file_id}/data-quality-score")
@@ -705,4 +677,60 @@ async def get_data_quality_score(file_id: int, db: Session = Depends(get_db)):
         
     except Exception as e:
         logger.error(f"Error getting quality score: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/files/{file_id}/quality-score")
+async def get_quality_score(file_id: int, db: Session = Depends(get_db)):
+    """Get the data quality score for a file"""
+    try:
+        # Get the latest validation run for this file
+        validation_run = db.query(ValidationRun).filter(
+            ValidationRun.file_upload_id == file_id,
+            ValidationRun.status == "completed"
+        ).order_by(ValidationRun.completed_at.desc()).first()
+        
+        if not validation_run:
+            raise HTTPException(status_code=404, detail="No completed validation run found for this file")
+        
+        return {
+            "file_id": file_id,
+            "quality_score": validation_run.data_quality_score,
+            "validation_run_id": validation_run.id,
+            "completed_at": validation_run.completed_at
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting quality score: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/compliance/history")
+async def get_compliance_history(db: Session = Depends(get_db)):
+    """Get compliance history for all files"""
+    try:
+        # Get all completed validation runs with compliance status
+        validation_runs = db.query(ValidationRun).filter(
+            ValidationRun.status == "completed"
+        ).order_by(ValidationRun.completed_at.desc()).all()
+        
+        history = []
+        for run in validation_runs:
+            file_upload = db.query(FileUpload).filter(FileUpload.id == run.file_upload_id).first()
+            if file_upload:
+                history.append({
+                    "file_id": file_upload.id,
+                    "filename": file_upload.filename,
+                    "validation_run_id": run.id,
+                    "quality_score": run.data_quality_score,
+                    "can_proceed_to_compliance": run.can_proceed_to_compliance,
+                    "completed_at": run.completed_at,
+                    "total_issues_found": run.total_issues_found
+                })
+        
+        return {
+            "history": history,
+            "total_files": len(history)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting compliance history: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
