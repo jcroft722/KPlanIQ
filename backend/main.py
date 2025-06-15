@@ -239,7 +239,7 @@ async def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db
             "file_path": file_path,
             "mime_type": file.content_type,
             "status": "uploaded",
-            "uploaded_at": datetime.now().isoformat(),
+            "uploaded_at": datetime.now().isoformat() if datetime.now() else None,
             "rows": metadata["rows"],
             "columns": metadata["columns"],
             "headers": metadata["headers"],
@@ -269,7 +269,7 @@ async def list_uploads(db: Session = Depends(get_db)):
                 "file_path": db_file.file_path,
                 "mime_type": db_file.mime_type,
                 "status": db_file.status,
-                "uploaded_at": db_file.uploaded_at.isoformat(),
+                "uploaded_at": db_file.uploaded_at.isoformat() if db_file.uploaded_at else None,
                 "rows": db_file.row_count,
                 "columns": db_file.column_count,
                 "headers": db_file.headers
@@ -293,7 +293,7 @@ async def get_upload_details(file_id: int, db: Session = Depends(get_db)):
             "file_path": db_file.file_path,
             "mime_type": db_file.mime_type,
             "status": db_file.status,
-            "uploaded_at": db_file.uploaded_at.isoformat(),
+            "uploaded_at": db_file.uploaded_at.isoformat() if db_file.uploaded_at else None,
             "rows": db_file.row_count,
             "columns": db_file.column_count,
             "headers": db_file.headers
@@ -570,10 +570,19 @@ async def get_validation_results(file_id: int, db: Session = Depends(get_db)):
             DataQualityScore.file_upload_id == file_id
         ).first()
         
-        # Format response
+        # Format response - with careful null checks for all datetime fields
         issues = []
         for result in validation_results:
-            issues.append({
+            # Safely handle any potentially None values
+            created_at = None
+            if result.created_at:
+                try:
+                    created_at = result.created_at.isoformat()
+                except AttributeError:
+                    created_at = None
+            
+            # Build result dictionary with null checks for all fields
+            issue_dict = {
                 "id": result.id,
                 "issue_type": result.issue_type,
                 "severity": result.severity,
@@ -587,8 +596,31 @@ async def get_validation_results(file_id: int, db: Session = Depends(get_db)):
                 "is_resolved": result.is_resolved,
                 "confidence_score": float(result.confidence_score) if result.confidence_score else 0.0,
                 "details": result.details or {},
-                "created_at": result.created_at.isoformat()
-            })
+                "created_at": created_at
+            }
+            issues.append(issue_dict)
+        
+        # Safely create the quality score section
+        quality_score_data = None
+        if quality_score:
+            # Apply null checks to all datetime fields
+            updated_at = None
+            if hasattr(quality_score, 'updated_at') and quality_score.updated_at:
+                try:
+                    updated_at = quality_score.updated_at.isoformat()
+                except AttributeError:
+                    updated_at = None
+            
+            quality_score_data = {
+                "overall": float(quality_score.overall_score) if quality_score.overall_score else 0.0,
+                "completeness": float(quality_score.completeness_score) if quality_score.completeness_score else 0.0,
+                "consistency": float(quality_score.consistency_score) if quality_score.consistency_score else 0.0,
+                "accuracy": float(quality_score.accuracy_score) if quality_score.accuracy_score else 0.0,
+                "critical_issues": quality_score.critical_issues if hasattr(quality_score, 'critical_issues') else 0,
+                "warning_issues": quality_score.warning_issues if hasattr(quality_score, 'warning_issues') else 0,
+                "anomaly_issues": quality_score.anomaly_issues if hasattr(quality_score, 'anomaly_issues') else 0,
+                "last_updated": updated_at
+            }
         
         return {
             "file_id": file_id,
@@ -598,15 +630,7 @@ async def get_validation_results(file_id: int, db: Session = Depends(get_db)):
                 "rows": file_upload.row_count,
                 "columns": file_upload.column_count
             },
-            "quality_score": {
-                "overall": float(quality_score.overall_score) if quality_score else 0.0,
-                "completeness": float(quality_score.completeness_score) if quality_score else 0.0,
-                "consistency": float(quality_score.consistency_score) if quality_score else 0.0,
-                "accuracy": float(quality_score.accuracy_score) if quality_score else 0.0,
-                "critical_issues": quality_score.critical_issues if quality_score else 0,
-                "warning_issues": quality_score.warning_issues if quality_score else 0,
-                "anomaly_issues": quality_score.anomaly_issues if quality_score else 0
-            } if quality_score else None
+            "quality_score": quality_score_data
         }
         
     except Exception as e:
@@ -692,7 +716,7 @@ async def get_data_quality_score(file_id: int, db: Session = Depends(get_db)):
             "warning_issues": quality_score.warning_issues,
             "total_issues": quality_score.total_issues,
             "auto_fixable": quality_score.auto_fixable_issues,
-            "last_updated": quality_score.updated_at.isoformat()
+            "last_updated": quality_score.updated_at.isoformat() if quality_score.updated_at else None
         }
         
     except Exception as e:
