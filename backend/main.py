@@ -486,6 +486,16 @@ async def run_data_validation(file_id: int, db: Session = Depends(get_db)):
         if not file_upload:
             raise HTTPException(status_code=404, detail="File not found")
         
+        # CREATE VALIDATION RUN RECORD
+        validation_run = ValidationRun(
+            file_upload_id=file_id,
+            status="running",
+            validation_config={"version": "1.0", "checks": "comprehensive"}
+        )
+        db.add(validation_run)
+        db.commit()
+        db.refresh(validation_run)
+        
         try:
             # Load the data
             if not os.path.exists(file_upload.file_path):
@@ -504,13 +514,18 @@ async def run_data_validation(file_id: int, db: Session = Depends(get_db)):
             # Save validation results
             validation_engine.save_validation_results()
             
-            # Get the validation run
-            validation_run = db.query(ValidationRun).filter(
-                ValidationRun.file_upload_id == file_id
-            ).order_by(ValidationRun.created_at.desc()).first()
+            # UPDATE VALIDATION RUN RECORD
+            end_time = datetime.now()
+            processing_time = (end_time - start_time).total_seconds()
             
-            if not validation_run:
-                raise HTTPException(status_code=500, detail="Validation run not found")
+            validation_run.status = "completed"
+            validation_run.completed_at = end_time
+            validation_run.processing_time_seconds = processing_time
+            validation_run.total_issues_found = len(issues)
+            validation_run.data_quality_score = quality_score
+            validation_run.can_proceed_to_compliance = len([i for i in issues if i.issue_type.value == "critical"]) == 0
+            
+            db.commit()
             
             return {
                 "validation_run_id": validation_run.id,
@@ -518,16 +533,21 @@ async def run_data_validation(file_id: int, db: Session = Depends(get_db)):
                 "issues_found": len(issues),
                 "data_quality_score": quality_score,
                 "can_proceed_to_compliance": validation_run.can_proceed_to_compliance,
-                "processing_time": validation_run.processing_time_seconds
+                "processing_time": processing_time
             }
             
         except Exception as e:
+            # UPDATE VALIDATION RUN WITH ERROR
+            validation_run.status = "failed"
+            validation_run.error_message = str(e)
+            validation_run.completed_at = datetime.now()
+            db.commit()
+            
             logger.error(f"Error in validation: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
             
     except Exception as e:
         logger.error(f"Error running validation: {str(e)}")
-        # Ensure we rollback any failed transaction
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -20,6 +20,8 @@ def upgrade() -> None:
     # Add resolved_at and resolution_notes columns to validation_results table
     op.add_column('validation_results', sa.Column('resolved_at', sa.DateTime(), nullable=True))
     op.add_column('validation_results', sa.Column('resolution_notes', sa.String(), nullable=True))
+    # Add updated_at column to validation_results table
+    op.add_column('validation_results', sa.Column('updated_at', sa.DateTime(timezone=True), onupdate=sa.func.now(), server_default=sa.func.now()))
 
 
 def downgrade() -> None:

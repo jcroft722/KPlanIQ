@@ -806,66 +806,143 @@ class DataValidationEngine:
         # Ensure score doesn't go below 0
         self.data_quality_score = max(0.0, score)
     
+
     def save_validation_results(self) -> None:
         """Save validation results to database"""
         try:
+            from app.models.models import ValidationResult, DataQualityScore, ValidationRun
+            
             # Clear existing results for this file
             self.db.query(ValidationResult).filter(
                 ValidationResult.file_upload_id == self.file_upload_id
             ).delete()
             
-            # Save new results
+            # Save new validation results
             for issue in self.validation_issues:
                 validation_result = ValidationResult(
                     file_upload_id=self.file_upload_id,
-                    issue_type=issue.issue_type.value,
-                    severity=issue.severity.value,
-                    category=issue.category.value,
+                    issue_type=issue.issue_type.value,  # Convert enum to string
+                    severity=issue.severity.value,      # Convert enum to string
+                    category=issue.category.value,      # Convert enum to string
                     title=issue.title,
                     description=issue.description,
                     affected_rows=issue.affected_rows,
-                    affected_employees=issue.affected_employees,
+                    affected_employees=issue.affected_employees,  # This is now an integer
                     suggested_action=issue.suggested_action,
                     auto_fixable=issue.auto_fixable,
+                    is_resolved=issue.is_resolved,
                     confidence_score=issue.confidence_score,
-                    details=issue.details
+                    details=issue.details,
+                    resolved_at=datetime.now() if issue.is_resolved else None,
+                    resolution_notes="Auto-fixed" if issue.is_resolved else None,
+                    resolved_by=None
                 )
                 self.db.add(validation_result)
             
-            # Update or create data quality score
-            quality_score = self.db.query(DataQualityScore).filter(
+            # Calculate component scores
+            completeness_score = self._calculate_completeness_score()
+            consistency_score = self._calculate_consistency_score()
+            accuracy_score = self._calculate_accuracy_score()
+            
+            # Count issues by type
+            critical_issues = len([i for i in self.validation_issues if i.issue_type.value == "critical"])
+            warning_issues = len([i for i in self.validation_issues if i.issue_type.value == "warning"])
+            info_issues = len([i for i in self.validation_issues if i.issue_type.value == "info"])
+            auto_fixable_count = len([i for i in self.validation_issues if i.auto_fixable])
+            auto_fixed_count = len([i for i in self.validation_issues if i.is_resolved])
+            
+            # Save or update data quality score
+            existing_score = self.db.query(DataQualityScore).filter(
                 DataQualityScore.file_upload_id == self.file_upload_id
             ).first()
             
-            if not quality_score:
-                quality_score = DataQualityScore(file_upload_id=self.file_upload_id)
-                self.db.add(quality_score)
-            
-            # Calculate scores based on validation issues
-            critical_issues = sum(1 for i in self.validation_issues if i.issue_type == IssueType.CRITICAL)
-            warning_issues = sum(1 for i in self.validation_issues if i.issue_type == IssueType.WARNING)
-            anomaly_issues = sum(1 for i in self.validation_issues if i.issue_type == IssueType.ANOMALY)
-            auto_fixable = sum(1 for i in self.validation_issues if i.auto_fixable)
-            
-            # Update quality score record
-            quality_score.overall_score = self.data_quality_score
-            quality_score.completeness_score = max(0, 100 - (critical_issues * 20))  # Simple scoring
-            quality_score.consistency_score = max(0, 100 - (warning_issues * 10))    # Simple scoring
-            quality_score.accuracy_score = max(0, 100 - (anomaly_issues * 5))        # Simple scoring
-            quality_score.critical_issues = critical_issues
-            quality_score.warning_issues = warning_issues
-            quality_score.anomaly_issues = anomaly_issues
-            quality_score.total_issues = len(self.validation_issues)
-            quality_score.auto_fixable_issues = auto_fixable
-            quality_score.analysis_version = "1.0"
+            if existing_score:
+                existing_score.overall_score = self.data_quality_score
+                existing_score.completeness_score = completeness_score
+                existing_score.consistency_score = consistency_score
+                existing_score.accuracy_score = accuracy_score
+                existing_score.critical_issues = critical_issues
+                existing_score.warning_issues = warning_issues
+                existing_score.anomaly_issues = info_issues  # Maps to "info" issues
+                existing_score.total_issues = len(self.validation_issues)
+                existing_score.auto_fixable_issues = auto_fixable_count
+                existing_score.auto_fixed_issues = auto_fixed_count
+                existing_score.updated_at = datetime.now()
+            else:
+                quality_score_record = DataQualityScore(
+                    file_upload_id=self.file_upload_id,
+                    overall_score=self.data_quality_score,
+                    completeness_score=completeness_score,
+                    consistency_score=consistency_score,
+                    accuracy_score=accuracy_score,
+                    critical_issues=critical_issues,
+                    warning_issues=warning_issues,
+                    anomaly_issues=info_issues,
+                    total_issues=len(self.validation_issues),
+                    auto_fixable_issues=auto_fixable_count,
+                    auto_fixed_issues=auto_fixed_count,
+                    analysis_version="1.0"
+                )
+                self.db.add(quality_score_record)
             
             self.db.commit()
-            logger.info(f"Saved {len(self.validation_issues)} validation results and quality score for file {self.file_upload_id}")
+            logger.info(f"Saved {len(self.validation_issues)} validation results and quality score")
             
         except Exception as e:
-            logger.error(f"Error saving validation results: {str(e)}")
             self.db.rollback()
+            logger.error(f"Error saving validation results: {str(e)}")
             raise
+
+    def _calculate_completeness_score(self) -> float:
+        """Calculate completeness component score"""
+        missing_data_issues = [i for i in self.validation_issues if i.category.value == "missing_data"]
+        if not missing_data_issues:
+            return 100.0
+        
+        score = 100.0
+        for issue in missing_data_issues:
+            if issue.severity.value == "high":
+                score -= 20
+            elif issue.severity.value == "medium":
+                score -= 10
+            else:
+                score -= 5
+        
+        return max(0.0, score)
+
+    def _calculate_consistency_score(self) -> float:
+        """Calculate consistency component score"""
+        logic_issues = [i for i in self.validation_issues if i.category.value in ["logic_error", "anomaly"]]
+        if not logic_issues:
+            return 100.0
+        
+        score = 100.0
+        for issue in logic_issues:
+            if issue.severity.value == "high":
+                score -= 15
+            elif issue.severity.value == "medium":
+                score -= 8
+            else:
+                score -= 3
+        
+        return max(0.0, score)
+
+    def _calculate_accuracy_score(self) -> float:
+        """Calculate accuracy component score"""
+        format_issues = [i for i in self.validation_issues if i.category.value == "format_error"]
+        if not format_issues:
+            return 100.0
+        
+        score = 100.0
+        for issue in format_issues:
+            if issue.severity.value == "high":
+                score -= 12
+            elif issue.severity.value == "medium":
+                score -= 6
+            else:
+                score -= 2
+        
+        return max(0.0, score)
     
     def get_auto_fixable_issues(self) -> List[ValidationIssue]:
         """Get list of issues that can be automatically fixed"""

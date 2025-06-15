@@ -202,42 +202,48 @@ class ValidationResult(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     file_upload_id = Column(Integer, ForeignKey("file_uploads.id"))
-    issue_type = Column(Enum(ValidationIssueType))
-    severity = Column(String)
-    category = Column(String)
-    title = Column(String)
-    description = Column(String)
+    issue_type = Column(String(20))  # Changed from Enum to String to match validation_engine
+    severity = Column(String(10))    # Added length constraint
+    category = Column(String(50))    # Added length constraint
+    title = Column(String(200))      # Added length constraint
+    description = Column(Text)       # Changed from String to Text for longer descriptions
     affected_rows = Column(JSON, nullable=True)
-    affected_employees = Column(JSON, nullable=True)
-    suggested_action = Column(String, nullable=True)
+    affected_employees = Column(Integer, default=0)  # FIXED: Changed from JSON to Integer
+    suggested_action = Column(Text, nullable=True)   # Changed from String to Text
     auto_fixable = Column(Boolean, default=False)
     is_resolved = Column(Boolean, default=False)
-    confidence_score = Column(Float, nullable=True)
+    confidence_score = Column(Numeric(5, 2), nullable=True)  # Changed from Float to Numeric for precision
     details = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())  # Use timezone-aware
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())        # Added updated_at
     resolved_at = Column(DateTime, nullable=True)
-    resolution_notes = Column(String, nullable=True)
-    resolved_by = Column(Integer, nullable=True)
+    resolution_notes = Column(Text, nullable=True)  # Changed from String to Text
+    resolved_by = Column(Integer, ForeignKey("users.id"), nullable=True)  # Added FK constraint
 
+    # Relationships
     file_upload = relationship("FileUpload", back_populates="validation_results")
+    resolved_by_user = relationship("User", foreign_keys=[resolved_by])  # Added relationship
 
 class DataQualityScore(Base):
     __tablename__ = "data_quality_scores"
 
     id = Column(Integer, primary_key=True, index=True)
     file_upload_id = Column(Integer, ForeignKey("file_uploads.id"))
-    overall_score = Column(Float)
-    completeness_score = Column(Float)
-    consistency_score = Column(Float)
-    accuracy_score = Column(Float)
+    overall_score = Column(Numeric(5, 2))      # Changed from Float to Numeric
+    completeness_score = Column(Numeric(5, 2)) # Changed from Float to Numeric
+    consistency_score = Column(Numeric(5, 2))  # Changed from Float to Numeric
+    accuracy_score = Column(Numeric(5, 2))     # Changed from Float to Numeric
     critical_issues = Column(Integer, default=0)
     warning_issues = Column(Integer, default=0)
-    anomaly_issues = Column(Integer, default=0)
+    anomaly_issues = Column(Integer, default=0)  # This was "info_issues" in validation_engine
     total_issues = Column(Integer, default=0)
     auto_fixable_issues = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    auto_fixed_issues = Column(Integer, default=0)  # Add this field
+    analysis_version = Column(String(20), default="1.0")  # Add this field
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    # Fix relationship name to match FileUpload
     file_upload = relationship("FileUpload", back_populates="data_quality_scores")
 
 class ValidationRun(Base):
@@ -245,14 +251,15 @@ class ValidationRun(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     file_upload_id = Column(Integer, ForeignKey("file_uploads.id"))
-    status = Column(String)  # running, completed, failed
+    status = Column(String(20), default="running")
     validation_config = Column(JSON)
-    started_at = Column(DateTime, default=datetime.utcnow)
-    completed_at = Column(DateTime, nullable=True)
-    processing_time_seconds = Column(Float, nullable=True)
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    processing_time_seconds = Column(Numeric(8, 2), nullable=True)
     total_issues_found = Column(Integer, default=0)
-    data_quality_score = Column(Float, nullable=True)
+    data_quality_score = Column(Numeric(5, 2), nullable=True)
     can_proceed_to_compliance = Column(Boolean, default=False)
-    error_message = Column(String, nullable=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())  # ADD THIS LINE
 
     file_upload = relationship("FileUpload", back_populates="validation_runs")
