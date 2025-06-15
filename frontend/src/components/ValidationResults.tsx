@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
+import './ValidationResults.css';
 import { getValidationResults, autoFixIssues } from '../services/api';
 import { runDataValidation, getDataQualityScore } from '../api/files';
 
@@ -47,6 +47,7 @@ export const ValidationResults: React.FC<ValidationResultsProps> = ({ fileId, on
   const [error, setError] = useState<string | null>(null);
   const [selectedIssues, setSelectedIssues] = useState<number[]>([]);
   const [isValidating, setIsValidating] = useState(false);
+  const [activeTab, setActiveTab] = useState<'all' | 'critical' | 'warning' | 'anomaly'>('all');
 
   useEffect(() => {
     loadValidationResults();
@@ -112,6 +113,22 @@ export const ValidationResults: React.FC<ValidationResultsProps> = ({ fileId, on
 
   const canProceedToCompliance = !issues.some(issue => issue.issue_type === 'critical' && !issue.is_resolved);
 
+  const filterIssues = (type: 'all' | 'critical' | 'warning' | 'anomaly') => {
+    setActiveTab(type);
+  };
+
+  const filteredIssues = issues.filter(issue => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'critical') return issue.issue_type === 'critical';
+    if (activeTab === 'warning') return issue.issue_type === 'warning';
+    if (activeTab === 'anomaly') return issue.issue_type === 'info';
+    return true;
+  });
+
+  const criticalCount = issues.filter(issue => issue.issue_type === 'critical').length;
+  const warningCount = issues.filter(issue => issue.issue_type === 'warning').length;
+  const anomalyCount = issues.filter(issue => issue.issue_type === 'info').length;
+
   if (loading) {
     return (
       <div className="loading">
@@ -121,197 +138,219 @@ export const ValidationResults: React.FC<ValidationResultsProps> = ({ fileId, on
   }
 
   return (
-    <div className="validation-results">
-      <div className="quality-score-section">
-        {qualityScore && (
-          <div className="quality-score">
-            <h3>Data Quality Score: {qualityScore.overall.toFixed(1)}%</h3>
-            <div className="score-details">
-              <div>Completeness: {qualityScore.completeness.toFixed(1)}%</div>
-              <div>Consistency: {qualityScore.consistency.toFixed(1)}%</div>
-              <div>Accuracy: {qualityScore.accuracy.toFixed(1)}%</div>
-            </div>
+    <div className="container">
+      {/* Header Section */}
+      <div className="header">
+        <div className="header-top">
+          <h1>Data Validation Results</h1>
+        </div>
+        
+        <div className="file-info">
+          <span className="file-badge">📄 {qualityScore?.file_id ? `File ID: ${qualityScore.file_id}` : 'File Data'}</span>
+          <span className="file-badge">📅 Validated: {qualityScore?.last_updated || 'Just now'}</span>
+          <span className="file-badge">👥 {issues.length} issues detected</span>
+        </div>
+        
+        <div className={`status-banner ${canProceedToCompliance ? 'status-success' : 'status-warning'}`}>
+          <strong>{canProceedToCompliance ? '✅ Ready for Compliance Testing:' : '⚠️ Action Required:'}</strong> 
+          {canProceedToCompliance 
+            ? ' All critical issues have been resolved. You can proceed to compliance testing.'
+            : ' Some critical issues need attention before running compliance tests. Most can be resolved automatically or with simple corrections.'}
+        </div>
+        
+        <div className="stats-grid">
+          <div className="stat-card stat-success">
+            <div className="stat-number">{qualityScore?.overall.toFixed(0) || 0}</div>
+            <div className="stat-label">Quality Score</div>
           </div>
-        )}
+          <div className="stat-card stat-error">
+            <div className="stat-number">{criticalCount}</div>
+            <div className="stat-label">Critical Issues</div>
+          </div>
+          <div className="stat-card stat-warning">
+            <div className="stat-number">{warningCount}</div>
+            <div className="stat-label">Warnings</div>
+          </div>
+          <div className="stat-card stat-warning">
+            <div className="stat-number">{anomalyCount}</div>
+            <div className="stat-label">Anomalies Detected</div>
+          </div>
+        </div>
       </div>
 
-      <div className="issues-section">
-        <h3>Validation Issues</h3>
-        {error && (
-          <div className="error-message" style={{ margin: '0 20px' }}>
-            {error}
-          </div>
-        )}
-
-        <div className="issues-list">
-          {issues.map(issue => (
-            <div key={issue.id} className={`issue-item ${issue.issue_type}`}>
-              <div className="issue-header">
-                <h4>{issue.title}</h4>
-                <span className="severity">{issue.severity}</span>
-              </div>
-              <p className="description">{issue.description}</p>
-              {issue.suggested_action && (
-                <p className="suggested-action">Suggested Action: {issue.suggested_action}</p>
-              )}
-              {issue.auto_fixable && !issue.is_resolved && (
-                <button
-                  onClick={() => setSelectedIssues([...selectedIssues, issue.id])}
-                  disabled={selectedIssues.includes(issue.id)}
-                >
-                  Auto-fix
-                </button>
-              )}
+      <div className="main-content">
+        {/* Issues List */}
+        <div className="issues-section">
+          <div className="section-header">
+            <h2 className="section-title">
+              🔍 Data Issues
+            </h2>
+            <div className="filter-tabs">
+              <button 
+                className={`tab ${activeTab === 'all' ? 'active' : ''}`} 
+                onClick={() => filterIssues('all')}
+              >
+                All ({issues.length})
+              </button>
+              <button 
+                className={`tab ${activeTab === 'critical' ? 'active' : ''}`} 
+                onClick={() => filterIssues('critical')}
+              >
+                Critical ({criticalCount})
+              </button>
+              <button 
+                className={`tab ${activeTab === 'warning' ? 'active' : ''}`} 
+                onClick={() => filterIssues('warning')}
+              >
+                Warnings ({warningCount})
+              </button>
+              <button 
+                className={`tab ${activeTab === 'anomaly' ? 'active' : ''}`} 
+                onClick={() => filterIssues('anomaly')}
+              >
+                Anomalies ({anomalyCount})
+              </button>
             </div>
-          ))}
+          </div>
+          
+          <div className="issues-list">
+            {filteredIssues.map(issue => (
+              <div key={issue.id} className="issue-item" data-type={issue.issue_type}>
+                <div className="issue-header">
+                  <span className={`severity-badge severity-${issue.severity.toLowerCase()}`}>
+                    {issue.issue_type.charAt(0).toUpperCase() + issue.issue_type.slice(1)}
+                  </span>
+                  <div className="issue-title">{issue.title}</div>
+                  {issue.auto_fixable && !issue.is_resolved && (
+                    <button 
+                      className="action-button"
+                      onClick={() => setSelectedIssues([...selectedIssues, issue.id])}
+                      disabled={selectedIssues.includes(issue.id)}
+                    >
+                      Fix Now
+                    </button>
+                  )}
+                </div>
+                <div className="issue-description">
+                  {issue.description}
+                </div>
+                <div className="issue-details">
+                  {issue.affected_employees && (
+                    <span className="detail-item">👥 Affects: {issue.affected_employees} employees</span>
+                  )}
+                  {issue.affected_rows && issue.affected_rows.length > 0 && (
+                    <span className="detail-item">📍 Rows: {issue.affected_rows.slice(0, 5).join(', ')}{issue.affected_rows.length > 5 ? '...' : ''}</span>
+                  )}
+                  {issue.severity === 'high' && (
+                    <span className="detail-item">⚖️ Compliance Impact: High</span>
+                  )}
+                  {issue.auto_fixable && (
+                    <span className="detail-item">🔧 Auto-fix Available</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {selectedIssues.length > 0 && (
-          <button onClick={handleAutoFix} className="auto-fix-all">
-            Auto-fix Selected Issues ({selectedIssues.length})
-          </button>
-        )}
+        {/* Sidebar */}
+        <div className="sidebar">
+          {/* Validation Progress */}
+          <div className="sidebar-card">
+            <h3>Validation Progress</h3>
+            <div style={{ margin: '12px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <span>Data Quality</span>
+                <span>{qualityScore?.overall.toFixed(0) || 0}%</span>
+              </div>
+              <div className="progress-bar">
+                <div className="progress-fill" style={{ width: `${qualityScore?.overall || 0}%` }}></div>
+              </div>
+            </div>
+            
+            <div style={{ fontSize: '14px', color: '#64748b' }}>
+              <div style={{ marginBottom: '8px' }}>✅ Format validation complete</div>
+              <div style={{ marginBottom: '8px' }}>✅ Field mapping verified</div>
+              <div style={{ marginBottom: '8px' }}>
+                {issues.length > 0 
+                  ? `⚠️ ${issues.length} issues need attention` 
+                  : '✅ No issues detected'}
+              </div>
+              <div>
+                {canProceedToCompliance 
+                  ? '✅ Ready for compliance testing' 
+                  : '⏳ Ready for compliance testing after fixes'}
+              </div>
+            </div>
+          </div>
 
-        <button
-          className={`btn ${canProceedToCompliance ? 'btn-primary' : 'btn-disabled'}`}
-          onClick={onProceedToCompliance}
-          disabled={!canProceedToCompliance}
-        >
-          {canProceedToCompliance ? 'Proceed to Compliance Testing →' : 'Fix Critical Issues First'}
-        </button>
+          {/* Quick Actions */}
+          <div className="sidebar-card">
+            <h3>Quick Actions</h3>
+            <div className="action-buttons">
+              {selectedIssues.length > 0 ? (
+                <button className="btn btn-primary" onClick={handleAutoFix}>
+                  🔧 Auto-Fix Selected Issues ({selectedIssues.length})
+                </button>
+              ) : (
+                <button className="btn btn-primary" onClick={() => {
+                  const autoFixableIssues = issues
+                    .filter(issue => issue.auto_fixable && !issue.is_resolved)
+                    .map(issue => issue.id);
+                  setSelectedIssues(autoFixableIssues);
+                  if (autoFixableIssues.length > 0) {
+                    handleAutoFix();
+                  }
+                }}>
+                  🔧 Auto-Fix Simple Issues
+                </button>
+              )}
+              <button className="btn btn-secondary">📥 Download Error Report</button>
+              <button className="btn btn-secondary">💾 Save Progress</button>
+              <button 
+                className={`btn ${canProceedToCompliance ? 'btn-primary' : 'btn-disabled'}`}
+                onClick={onProceedToCompliance}
+                disabled={!canProceedToCompliance}
+              >
+                {canProceedToCompliance ? 'Proceed to Compliance Testing →' : 'Fix Critical Issues First'}
+              </button>
+            </div>
+          </div>
+
+          {/* Next Steps */}
+          <div className="sidebar-card">
+            <div className="next-steps">
+              <h4>Next Steps</h4>
+              <ul>
+                {criticalCount > 0 && <li>Fix {criticalCount} critical issues to proceed</li>}
+                {warningCount > 0 && <li>Review flagged warnings</li>}
+                <li>Then run compliance tests</li>
+              </ul>
+            </div>
+            
+            <div className="compliance-impact">
+              <h4 style={{ color: '#92400e', marginBottom: '8px' }}>⚖️ Compliance Impact</h4>
+              <div style={{ fontSize: '14px', color: '#92400e' }}>
+                Current issues may affect:
+                <br/>• HCE determination
+                <br/>• 410(b) coverage testing
+                <br/>• ADP/ACP calculations
+              </div>
+            </div>
+          </div>
+
+          {/* Help */}
+          <div className="sidebar-card">
+            <h3>Need Help?</h3>
+            <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '12px' }}>
+              Our validation system checks for common data issues that could affect your plan's compliance testing.
+            </div>
+            <button className="btn btn-secondary">📚 View Data Guidelines</button>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
-
-// Additional CSS classes needed (add to your App.css)
-const additionalStyles = `
-.validation-results-container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 24px;
-}
-
-.validation-header {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 24px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.validation-main-content {
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 24px;
-}
-
-.issues-section {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.validation-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.quality-score {
-  text-align: center;
-  margin: 20px 0;
-}
-
-.score-circle {
-  display: inline-flex;
-  align-items: baseline;
-  justify-content: center;
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  border: 8px solid #e2e8f0;
-  margin-bottom: 16px;
-  position: relative;
-}
-
-.score-number {
-  font-size: 36px;
-  font-weight: 700;
-  color: #3b82f6;
-}
-
-.score-suffix {
-  font-size: 18px;
-  font-weight: 600;
-  color: #64748b;
-}
-
-.score-breakdown {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.score-item {
-  display: flex;
-  justify-content: space-between;
-  font-size: 14px;
-  color: #64748b;
-}
-
-.next-steps.ready {
-  background: #f0fdf4;
-  border: 1px solid #10b981;
-}
-
-.next-steps.blocked {
-  background: #fef2f2;
-  border: 1px solid #ef4444;
-}
-
-.validation-footer {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  margin-top: 24px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.btn-disabled {
-  background: #94a3b8;
-  color: white;
-  cursor: not-allowed;
-}
-
-.btn-disabled:hover {
-  background: #94a3b8;
-}
-
-.issue-action {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #e2e8f0;
-  font-size: 14px;
-  color: #475569;
-}
-
-@media (max-width: 1024px) {
-  .validation-main-content {
-    grid-template-columns: 1fr;
-  }
-  
-  .validation-sidebar {
-    order: -1;
-  }
-}
-`;
 
 export default ValidationResults;
