@@ -1,8 +1,8 @@
 """Fix all validation_results data types
 
-Revision ID: [your_generated_id]
-Revises: [previous_revision]
-Create Date: [timestamp]
+Revision ID: 90f19db23fa3
+Revises: 
+Create Date: 2024-12-21 10:00:00.000000
 
 """
 from alembic import op
@@ -11,8 +11,8 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy import text
 
 # revision identifiers, used by Alembic.
-revision = '[your_generated_id]'  # Replace with actual generated ID
-down_revision = '[previous_revision]'  # Replace with previous revision
+revision = '90f19db23fa3'
+down_revision = None
 branch_labels = None
 depends_on = None
 

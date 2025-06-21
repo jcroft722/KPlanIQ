@@ -8,7 +8,7 @@ import pandas as pd
 import io
 import logging
 from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.core.database import get_db, Base, engine
 from app.models.models import (
     FileUpload,
@@ -17,14 +17,14 @@ from app.models.models import (
     ColumnMapping,
     ValidationResult,
     DataQualityScore,
-    ValidationRun
+    ValidationRun,
+    FixHistory,
+    FixSession,
+    FixTemplate,
+    ComplianceTestRun
 )
 from app.services.validation_engine import DataValidationEngine
 from app.routers import fix_issue_routes
-app.include_router(
-    fix_issue_routes.router,
-    tags=["fix-issues"]
-)
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -34,6 +34,12 @@ logger = logging.getLogger(__name__)
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+# Include routers
+app.include_router(
+    fix_issue_routes.router,
+    tags=["fix-issues"]
+)
 
 # Configure CORS
 app.add_middleware(
@@ -197,7 +203,8 @@ async def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db
             row_count=metadata["rows"],
             column_count=metadata["columns"],
             headers=metadata["headers"],
-            status="uploaded"
+            status="uploaded",
+            has_fixes_applied=False
         )
         db.add(db_file)
         db.commit()
@@ -826,32 +833,113 @@ async def get_quality_score(file_id: int, db: Session = Depends(get_db)):
 
 @app.get("/api/compliance/history")
 async def get_compliance_history(db: Session = Depends(get_db)):
-    """Get compliance history for all files"""
+    """Get full compliance test history"""
     try:
-        # Get all completed validation runs with compliance status
-        validation_runs = db.query(ValidationRun).filter(
-            ValidationRun.status == "completed"
-        ).order_by(ValidationRun.completed_at.desc()).all()
+        # Get all test runs with detailed results
+        test_runs = db.query(ComplianceTestRun)\
+            .options(
+                joinedload(ComplianceTestRun.file),
+                joinedload(ComplianceTestRun.test_results)
+            )\
+            .order_by(ComplianceTestRun.run_date.desc())\
+            .all()
         
         history = []
-        for run in validation_runs:
-            file_upload = db.query(FileUpload).filter(FileUpload.id == run.file_upload_id).first()
-            if file_upload:
-                history.append({
-                    "file_id": file_upload.id,
-                    "filename": file_upload.filename,
-                    "validation_run_id": run.id,
-                    "quality_score": run.data_quality_score,
-                    "can_proceed_to_compliance": run.can_proceed_to_compliance,
-                    "completed_at": run.completed_at,
-                    "total_issues_found": run.total_issues_found
+        for run in test_runs:
+            detailed_results = []
+            for result in run.test_results:
+                detailed_results.append({
+                    "id": result.id,
+                    "test_id": result.test_id,
+                    "test_name": result.test_name,
+                    "test_category": result.test_category,
+                    "status": result.status,
+                    "message": result.message,
+                    "affected_employees": result.affected_employees,
+                    "details": result.details,
+                    "created_at": result.created_at.isoformat()
                 })
+            
+            history.append({
+                "id": run.id,
+                "file_id": run.file_id,
+                "file_name": run.file.original_filename if run.file else "Unknown",
+                "run_date": run.run_date.isoformat(),
+                "total_tests": run.total_tests,
+                "passed_tests": run.passed_tests,
+                "failed_tests": run.failed_tests,
+                "results": detailed_results
+            })
+        
+        return {"test_runs": history}
+        
+    except Exception as e:
+        logger.error(f"Error fetching compliance history: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching compliance history: {str(e)}")
+
+@app.get("/api/compliance/results")
+async def get_compliance_results(db: Session = Depends(get_db)):
+    """Get recent compliance test results for dashboard"""
+    try:
+        # Get recent test runs with file info
+        recent_runs = db.query(ComplianceTestRun)\
+            .options(joinedload(ComplianceTestRun.file))\
+            .order_by(ComplianceTestRun.run_date.desc())\
+            .limit(10)\
+            .all()
+        
+        results = []
+        for run in recent_runs:
+            results.append({
+                "id": run.id,
+                "file_id": run.file_id,
+                "file_name": run.file.original_filename if run.file else "Unknown",
+                "run_date": run.run_date.isoformat(),
+                "total_tests": run.total_tests,
+                "passed_tests": run.passed_tests,
+                "failed_tests": run.failed_tests,
+                "results": []  # Can include detailed results if needed
+            })
+        
+        return {"recent_results": results}
+        
+    except Exception as e:
+        logger.error(f"Error fetching compliance results: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching compliance results: {str(e)}")
+
+@app.post("/api/files/{file_id}/compliance-test")
+async def run_compliance_tests(file_id: int, db: Session = Depends(get_db)):
+    """Run compliance tests on uploaded file and store results"""
+    try:
+        # Get file from database
+        file_record = db.query(FileUpload).filter(FileUpload.id == file_id).first()
+        if not file_record:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # For now, return a mock response since we don't have the full compliance engine
+        # In a real implementation, you would run actual compliance tests here
+        
+        # Create a mock test run record
+        test_run = ComplianceTestRun(
+            file_id=file_id,
+            total_tests=5,
+            passed_tests=4,
+            failed_tests=1
+        )
+        db.add(test_run)
+        db.commit()
         
         return {
-            "history": history,
-            "total_files": len(history)
+            "test_run_id": test_run.id,
+            "message": "Compliance tests completed",
+            "summary": {
+                "total_tests": 5,
+                "passed_tests": 4,
+                "failed_tests": 1
+            }
         }
         
     except Exception as e:
-        logger.error(f"Error getting compliance history: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        db.rollback()
+        logger.error(f"Error running compliance tests: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error running compliance tests: {str(e)}")

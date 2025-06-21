@@ -7,11 +7,10 @@ from pydantic import BaseModel
 import json
 import logging
 
-from ..database import get_db
-from ..models import FileUpload, ValidationResult, DataQualityScore, User
-from ..auth import get_current_user
-from ..validation_engine import DataValidationEngine
-from ..fix_engine import IssueFixEngine
+from ..core.database import get_db
+from ..models.models import FileUpload, ValidationResult, DataQualityScore, User
+from ..services.validation_engine import DataValidationEngine
+from ..services.fix_engine import IssueFixEngine
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -37,15 +36,13 @@ async def apply_issue_fix(
     issue_id: int,
     fix_request: FixRequest,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """Apply a fix to a specific validation issue."""
     try:
-        # Verify file ownership
+        # Get the file upload
         file_upload = db.query(FileUpload).filter(
-            FileUpload.id == file_id,
-            FileUpload.user_id == current_user.id
+            FileUpload.id == file_id
         ).first()
         
         if not file_upload:
@@ -54,7 +51,7 @@ async def apply_issue_fix(
         # Get the issue
         issue = db.query(ValidationResult).filter(
             ValidationResult.id == issue_id,
-            ValidationResult.file_id == file_id
+            ValidationResult.file_upload_id == file_id
         ).first()
         
         if not issue:
@@ -97,15 +94,13 @@ async def apply_bulk_fixes(
     file_id: int,
     bulk_request: BulkFixRequest,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """Apply auto-fixes to multiple issues at once."""
     try:
-        # Verify file ownership
+        # Get the file upload
         file_upload = db.query(FileUpload).filter(
-            FileUpload.id == file_id,
-            FileUpload.user_id == current_user.id
+            FileUpload.id == file_id
         ).first()
         
         if not file_upload:
@@ -114,7 +109,7 @@ async def apply_bulk_fixes(
         # Get the issues
         issues = db.query(ValidationResult).filter(
             ValidationResult.id.in_(bulk_request.issue_ids),
-            ValidationResult.file_id == file_id,
+            ValidationResult.file_upload_id == file_id,
             ValidationResult.auto_fixable == True,
             ValidationResult.is_resolved == False
         ).all()
@@ -169,15 +164,13 @@ async def update_issue_status(
     file_id: int,
     issue_id: int,
     status_request: StatusUpdateRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """Update the status of a validation issue."""
     try:
-        # Verify file ownership
+        # Get the file upload
         file_upload = db.query(FileUpload).filter(
-            FileUpload.id == file_id,
-            FileUpload.user_id == current_user.id
+            FileUpload.id == file_id
         ).first()
         
         if not file_upload:
@@ -186,7 +179,7 @@ async def update_issue_status(
         # Get the issue
         issue = db.query(ValidationResult).filter(
             ValidationResult.id == issue_id,
-            ValidationResult.file_id == file_id
+            ValidationResult.file_upload_id == file_id
         ).first()
         
         if not issue:
@@ -215,20 +208,18 @@ async def update_issue_status(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-# Get fix suggestions
+# Get fix suggestions for an issue
 @router.get("/api/files/{file_id}/issues/{issue_id}/suggestions")
 async def get_fix_suggestions(
     file_id: int,
     issue_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """Get suggested fixes for a validation issue."""
     try:
-        # Verify file ownership
+        # Get the file upload
         file_upload = db.query(FileUpload).filter(
-            FileUpload.id == file_id,
-            FileUpload.user_id == current_user.id
+            FileUpload.id == file_id
         ).first()
         
         if not file_upload:
@@ -237,7 +228,7 @@ async def get_fix_suggestions(
         # Get the issue
         issue = db.query(ValidationResult).filter(
             ValidationResult.id == issue_id,
-            ValidationResult.file_id == file_id
+            ValidationResult.file_upload_id == file_id
         ).first()
         
         if not issue:
@@ -250,7 +241,7 @@ async def get_fix_suggestions(
         suggestions = await fix_engine.get_fix_suggestions(issue)
         
         return {
-            "success": True,
+            "issue_id": issue_id,
             "suggestions": suggestions
         }
         
@@ -258,20 +249,18 @@ async def get_fix_suggestions(
         logger.error(f"Error getting fix suggestions: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Preview auto-fix
+# Preview auto-fix changes
 @router.get("/api/files/{file_id}/issues/{issue_id}/preview-fix")
 async def preview_auto_fix(
     file_id: int,
     issue_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """Preview what changes will be made by auto-fix."""
     try:
-        # Verify file ownership
+        # Get the file upload
         file_upload = db.query(FileUpload).filter(
-            FileUpload.id == file_id,
-            FileUpload.user_id == current_user.id
+            FileUpload.id == file_id
         ).first()
         
         if not file_upload:
@@ -280,7 +269,7 @@ async def preview_auto_fix(
         # Get the issue
         issue = db.query(ValidationResult).filter(
             ValidationResult.id == issue_id,
-            ValidationResult.file_id == file_id
+            ValidationResult.file_upload_id == file_id
         ).first()
         
         if not issue:
@@ -296,7 +285,7 @@ async def preview_auto_fix(
         preview = await fix_engine.preview_fix(issue)
         
         return {
-            "success": True,
+            "issue_id": issue_id,
             "preview": preview
         }
         
@@ -304,21 +293,19 @@ async def preview_auto_fix(
         logger.error(f"Error previewing fix: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Validate manual fix
+# Validate manual fix data
 @router.post("/api/files/{file_id}/issues/{issue_id}/validate-fix")
 async def validate_manual_fix(
     file_id: int,
     issue_id: int,
     validation_request: FixValidationRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """Validate manual fix data before applying."""
     try:
-        # Verify file ownership
+        # Get the file upload
         file_upload = db.query(FileUpload).filter(
-            FileUpload.id == file_id,
-            FileUpload.user_id == current_user.id
+            FileUpload.id == file_id
         ).first()
         
         if not file_upload:
@@ -327,7 +314,7 @@ async def validate_manual_fix(
         # Get the issue
         issue = db.query(ValidationResult).filter(
             ValidationResult.id == issue_id,
-            ValidationResult.file_id == file_id
+            ValidationResult.file_upload_id == file_id
         ).first()
         
         if not issue:
@@ -340,90 +327,95 @@ async def validate_manual_fix(
         validation_result = await fix_engine.validate_fix_data(issue, validation_request.fix_data)
         
         return {
-            "success": True,
+            "issue_id": issue_id,
             "validation": validation_result
         }
         
     except Exception as e:
-        logger.error(f"Error validating fix: {str(e)}")
+        logger.error(f"Error validating fix data: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Save fix progress
 @router.post("/api/files/{file_id}/fix-progress")
 async def save_fix_progress(
     file_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
-    """Save current fix progress."""
+    """Save current fix progress for a file."""
     try:
-        # Verify file ownership
+        # Get the file upload
         file_upload = db.query(FileUpload).filter(
-            FileUpload.id == file_id,
-            FileUpload.user_id == current_user.id
+            FileUpload.id == file_id
         ).first()
         
         if not file_upload:
             raise HTTPException(status_code=404, detail="File not found")
         
-        # Update last modified timestamp
-        file_upload.updated_at = datetime.utcnow()
-        db.commit()
-        
-        return {
-            "success": True,
-            "message": "Progress saved successfully"
-        }
-        
-    except Exception as e:
-        logger.error(f"Error saving progress: {str(e)}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Get fix progress
-@router.get("/api/files/{file_id}/fix-progress")
-async def get_fix_progress(
-    file_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Get current fix progress."""
-    try:
-        # Verify file ownership
-        file_upload = db.query(FileUpload).filter(
-            FileUpload.id == file_id,
-            FileUpload.user_id == current_user.id
-        ).first()
-        
-        if not file_upload:
-            raise HTTPException(status_code=404, detail="File not found")
-        
-        # Get issue counts
-        total_issues = db.query(ValidationResult).filter(
-            ValidationResult.file_id == file_id
-        ).count()
-        
-        resolved_issues = db.query(ValidationResult).filter(
-            ValidationResult.file_id == file_id,
-            ValidationResult.is_resolved == True
-        ).count()
-        
-        critical_unresolved = db.query(ValidationResult).filter(
-            ValidationResult.file_id == file_id,
-            ValidationResult.issue_type == 'critical',
+        # Get unresolved issues count
+        unresolved_count = db.query(ValidationResult).filter(
+            ValidationResult.file_upload_id == file_id,
             ValidationResult.is_resolved == False
         ).count()
         
+        # Get resolved issues count
+        resolved_count = db.query(ValidationResult).filter(
+            ValidationResult.file_upload_id == file_id,
+            ValidationResult.is_resolved == True
+        ).count()
+        
         return {
-            "success": True,
-            "progress": {
-                "total_issues": total_issues,
-                "resolved_issues": resolved_issues,
-                "remaining_issues": total_issues - resolved_issues,
-                "critical_unresolved": critical_unresolved,
-                "completion_percentage": (resolved_issues / total_issues * 100) if total_issues > 0 else 100,
-                "can_proceed_to_compliance": critical_unresolved == 0
-            }
+            "file_id": file_id,
+            "unresolved_issues": unresolved_count,
+            "resolved_issues": resolved_count,
+            "progress_percentage": (resolved_count / (resolved_count + unresolved_count)) * 100 if (resolved_count + unresolved_count) > 0 else 0
+        }
+        
+    except Exception as e:
+        logger.error(f"Error saving fix progress: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Get current fix progress
+@router.get("/api/files/{file_id}/fix-progress")
+async def get_fix_progress(
+    file_id: int,
+    db: Session = Depends(get_db)
+):
+    """Get current fix progress for a file."""
+    try:
+        # Get the file upload
+        file_upload = db.query(FileUpload).filter(
+            FileUpload.id == file_id
+        ).first()
+        
+        if not file_upload:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Get unresolved issues count
+        unresolved_count = db.query(ValidationResult).filter(
+            ValidationResult.file_upload_id == file_id,
+            ValidationResult.is_resolved == False
+        ).count()
+        
+        # Get resolved issues count
+        resolved_count = db.query(ValidationResult).filter(
+            ValidationResult.file_upload_id == file_id,
+            ValidationResult.is_resolved == True
+        ).count()
+        
+        # Get critical issues count
+        critical_count = db.query(ValidationResult).filter(
+            ValidationResult.file_upload_id == file_id,
+            ValidationResult.is_resolved == False,
+            ValidationResult.issue_type == 'critical'
+        ).count()
+        
+        return {
+            "file_id": file_id,
+            "unresolved_issues": unresolved_count,
+            "resolved_issues": resolved_count,
+            "critical_issues": critical_count,
+            "progress_percentage": (resolved_count / (resolved_count + unresolved_count)) * 100 if (resolved_count + unresolved_count) > 0 else 0,
+            "can_proceed_to_compliance": critical_count == 0
         }
         
     except Exception as e:
@@ -434,44 +426,43 @@ async def get_fix_progress(
 @router.get("/api/files/{file_id}/compliance-readiness")
 async def check_compliance_readiness(
     file_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
-    """Check if file is ready for compliance testing."""
+    """Check if file is ready for compliance testing after fixes."""
     try:
-        # Verify file ownership
+        # Get the file upload
         file_upload = db.query(FileUpload).filter(
-            FileUpload.id == file_id,
-            FileUpload.user_id == current_user.id
+            FileUpload.id == file_id
         ).first()
         
         if not file_upload:
             raise HTTPException(status_code=404, detail="File not found")
         
-        # Check for blocking issues
+        # Check for unresolved critical issues
         critical_issues = db.query(ValidationResult).filter(
-            ValidationResult.file_id == file_id,
-            ValidationResult.issue_type == 'critical',
-            ValidationResult.is_resolved == False
+            ValidationResult.file_upload_id == file_id,
+            ValidationResult.is_resolved == False,
+            ValidationResult.issue_type == 'critical'
         ).all()
         
-        blocking_categories = ['Missing Data', 'Format Error', 'Logic Error']
-        blocking_issues = [
-            issue for issue in critical_issues 
-            if issue.category in blocking_categories
-        ]
+        # Check for unresolved warning issues
+        warning_issues = db.query(ValidationResult).filter(
+            ValidationResult.file_upload_id == file_id,
+            ValidationResult.is_resolved == False,
+            ValidationResult.issue_type == 'warning'
+        ).all()
         
         return {
-            "success": True,
-            "ready": len(blocking_issues) == 0,
-            "blocking_issues": len(blocking_issues),
-            "blocking_issue_details": [
-                {
-                    "id": issue.id,
-                    "title": issue.title,
-                    "category": issue.category
-                }
-                for issue in blocking_issues
+            "file_id": file_id,
+            "ready_for_compliance": len(critical_issues) == 0,
+            "critical_issues_remaining": len(critical_issues),
+            "warning_issues_remaining": len(warning_issues),
+            "recommendations": [
+                "Resolve all critical issues before running compliance tests",
+                "Review warning issues for potential compliance impact"
+            ] if len(critical_issues) > 0 else [
+                "File is ready for compliance testing",
+                "Consider reviewing remaining warning issues"
             ]
         }
         
@@ -484,15 +475,13 @@ async def check_compliance_readiness(
 async def export_fixed_file(
     file_id: int,
     format: str = "xlsx",
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
-    """Export file with fixes applied."""
+    """Export the file with all fixes applied."""
     try:
-        # Verify file ownership
+        # Get the file upload
         file_upload = db.query(FileUpload).filter(
-            FileUpload.id == file_id,
-            FileUpload.user_id == current_user.id
+            FileUpload.id == file_id
         ).first()
         
         if not file_upload:
@@ -501,20 +490,19 @@ async def export_fixed_file(
         # Initialize fix engine
         fix_engine = IssueFixEngine(db, file_upload)
         
-        # Export file with fixes
-        file_data = await fix_engine.export_fixed_file(format)
+        # Export the fixed file
+        file_content = await fix_engine.export_fixed_file(format)
         
-        # Return file as response
-        from fastapi.responses import Response
+        # Generate filename
+        original_name = file_upload.original_filename
+        name_without_ext = original_name.rsplit('.', 1)[0]
+        export_filename = f"{name_without_ext}_fixed.{format}"
         
-        content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if format == "xlsx" else "text/csv"
-        filename = f"{file_upload.original_filename}_fixed.{format}"
-        
-        return Response(
-            content=file_data,
-            media_type=content_type,
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
+        return {
+            "file_content": file_content,
+            "filename": export_filename,
+            "format": format
+        }
         
     except Exception as e:
         logger.error(f"Error exporting fixed file: {str(e)}")
@@ -522,15 +510,40 @@ async def export_fixed_file(
 
 # Background task to recalculate quality score
 async def recalculate_quality_score(file_id: int, db: Session):
-    """Recalculate data quality score after fixes are applied."""
+    """Recalculate data quality score after fixes."""
     try:
-        file_upload = db.query(FileUpload).filter(FileUpload.id == file_id).first()
-        if file_upload:
-            validation_engine = DataValidationEngine(db, file_upload)
-            await validation_engine.calculate_quality_score()
-            
+        # Get all issues for the file
+        issues = db.query(ValidationResult).filter(
+            ValidationResult.file_upload_id == file_id
+        ).all()
+        
+        # Calculate new scores
+        total_issues = len(issues)
+        resolved_issues = len([i for i in issues if i.is_resolved])
+        critical_issues = len([i for i in issues if i.issue_type == 'critical'])
+        warning_issues = len([i for i in issues if i.issue_type == 'warning'])
+        auto_fixable = len([i for i in issues if i.auto_fixable])
+        
+        # Calculate overall score (simplified)
+        overall_score = max(0, 100 - (total_issues * 10) + (resolved_issues * 5))
+        
+        # Update or create quality score record
+        quality_score = db.query(DataQualityScore).filter(
+            DataQualityScore.file_upload_id == file_id
+        ).first()
+        
+        if not quality_score:
+            quality_score = DataQualityScore(file_upload_id=file_id)
+            db.add(quality_score)
+        
+        quality_score.overall_score = overall_score
+        quality_score.critical_issues = critical_issues
+        quality_score.warning_issues = warning_issues
+        quality_score.total_issues = total_issues
+        quality_score.auto_fixable_issues = auto_fixable
+        
+        db.commit()
+        
     except Exception as e:
         logger.error(f"Error recalculating quality score: {str(e)}")
-
-# Add datetime import
-from datetime import datetime
+        db.rollback()

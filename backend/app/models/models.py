@@ -48,6 +48,12 @@ class FileUpload(Base):
     row_count = Column(Integer)
     column_count = Column(Integer)
     headers = Column(JSON)  # Store headers as JSON array
+    
+    # Fix-related columns added by migration
+    has_fixes_applied = Column(Boolean, default=False)
+    fix_session_count = Column(Integer, default=0)
+    last_fix_applied = Column(DateTime, nullable=True)
+    backup_file_path = Column(String(500), nullable=True)
 
     # Relationships
     raw_data = relationship("RawEmployeeData", back_populates="file_upload", cascade="all, delete")
@@ -240,6 +246,13 @@ class DataQualityScore(Base):
     auto_fixable_issues = Column(Integer, default=0)
     auto_fixed_issues = Column(Integer, default=0)  # Add this field
     analysis_version = Column(String(20), default="1.0")  # Add this field
+    
+    # Fix-related columns added by migration
+    resolved_issues = Column(Integer, default=0)
+    auto_fixed = Column(Integer, default=0)
+    can_proceed_to_compliance = Column(Boolean, default=False)
+    blocking_issues = Column(Integer, default=0)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -263,3 +276,62 @@ class ValidationRun(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())  # ADD THIS LINE
 
     file_upload = relationship("FileUpload", back_populates="validation_runs")
+
+# Fix-related models
+class FixHistory(Base):
+    __tablename__ = "fix_history"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    file_upload_id = Column(Integer, ForeignKey("file_uploads.id"))
+    validation_result_id = Column(Integer, ForeignKey("validation_results.id"))
+    session_id = Column(Integer, ForeignKey("fix_sessions.id"), nullable=True)
+    fix_type = Column(String(50))  # 'auto_fix', 'manual_entry', 'exclude', 'accept'
+    fix_data = Column(JSON, nullable=True)
+    applied_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    applied_at = Column(DateTime(timezone=True), server_default=func.now())
+    success = Column(Boolean, default=True)
+    error_message = Column(Text, nullable=True)
+    rollback_data = Column(JSON, nullable=True)  # Store original data for potential rollback
+    
+    # Relationships
+    file_upload = relationship("FileUpload")
+    validation_result = relationship("ValidationResult")
+    user = relationship("User")
+    session = relationship("FixSession")
+
+class FixSession(Base):
+    __tablename__ = "fix_sessions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    file_upload_id = Column(Integer, ForeignKey("file_uploads.id"))
+    session_name = Column(String(200))
+    description = Column(Text, nullable=True)
+    status = Column(String(20), default="active")  # 'active', 'completed', 'cancelled'
+    started_by = Column(Integer, ForeignKey("users.id"))
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    total_issues = Column(Integer, default=0)
+    fixed_issues = Column(Integer, default=0)
+    session_data = Column(JSON, nullable=True)  # Store session state
+    
+    # Relationships
+    file_upload = relationship("FileUpload")
+    user = relationship("User")
+
+class FixTemplate(Base):
+    __tablename__ = "fix_templates"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    template_type = Column(String(50))  # 'auto_fix', 'manual_entry', 'exclusion'
+    category = Column(String(50))  # 'format_error', 'missing_data', 'anomaly'
+    fix_rules = Column(JSON)  # Store the fix logic/rules
+    priority = Column(Integer, default=1)
+    is_active = Column(Boolean, default=True)
+    created_by = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    user = relationship("User")

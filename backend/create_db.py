@@ -1,5 +1,5 @@
 from app.core.database import Base, engine, DATABASE_URL
-from app.models.models import User, Project, FileUpload, MappingTemplate, ProcessingJob, EmployeeData, RawEmployeeData, ColumnMapping, ComplianceTestRun, ComplianceTestResult
+from app.models.models import User, Project, FileUpload, MappingTemplate, ProcessingJob, EmployeeData, RawEmployeeData, ColumnMapping, ComplianceTestRun, ComplianceTestResult, ValidationResult, DataQualityScore, ValidationRun, FixHistory, FixSession, FixTemplate
 from sqlalchemy import inspect, text
 import os
 from dotenv import load_dotenv

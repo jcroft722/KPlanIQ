@@ -29,7 +29,7 @@ export const uploadFile = async (file: File): Promise<FileUpload> => {
   const formData = new FormData();
   formData.append('file', file);
   
-  const response = await api.post<FileUpload>('/files/upload', formData, {
+  const response = await api.post<FileUpload>('/api/files/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
@@ -39,12 +39,12 @@ export const uploadFile = async (file: File): Promise<FileUpload> => {
 };
 
 export const getUploads = async (): Promise<FileUpload[]> => {
-  const response = await api.get<FileUpload[]>('/files/uploads');
+  const response = await api.get<FileUpload[]>('/api/files/uploads');
   return response.data;
 };
 
 export const getUploadDetails = async (fileId: number): Promise<FileUpload> => {
-  const response = await api.get<FileUpload>(`/files/uploads/${fileId}`);
+  const response = await api.get<FileUpload>(`/api/files/uploads/${fileId}`);
   return response.data;
 };
 
@@ -57,45 +57,45 @@ export const updateFileMappings = async (fileId: number, mappings: { [key: strin
     }
   });
   
-  const response = await api.put<FileUpload>(`/files/${fileId}/mappings`, formattedMappings);
+  const response = await api.put<FileUpload>(`/api/files/${fileId}/mappings`, formattedMappings);
   return response.data;
 };
 
 export const processFile = async (fileId: number): Promise<FileUpload> => {
-  const response = await api.post<FileUpload>(`/files/${fileId}/process`);
+  const response = await api.post<FileUpload>(`/api/files/${fileId}/process`);
   return response.data;
 };
 
 export const getFileMappings = async (fileId: number) => {
-  const response = await api.get(`/files/${fileId}/mappings`);
+  const response = await api.get(`/api/files/${fileId}/mappings`);
   return response.data;
 };
 
 // New portion for Compliance Tests
 
 export const runComplianceTests = async (fileId: number) => {
-    const response = await axios.post(`${API_BASE_URL}/files/${fileId}/compliance-test`);
+    const response = await axios.post(`${API_BASE_URL}/api/files/${fileId}/compliance-test`);
     return response.data;
 };
 
 export const getComplianceHistory = async () => {
-  const response = await api.get('/compliance/history');
+  const response = await api.get('/api/compliance/history');
   return response.data;
 };
 
 export const getComplianceResults = async () => {
-  const response = await api.get('/compliance/results');
+  const response = await api.get('/api/compliance/results');
   return response.data;
 };
 
 // Validation API functions
 export const getValidationResults = async (fileId: number) => {
-  const response = await axios.get(`${API_BASE_URL}/files/${fileId}/validation-results`);
+  const response = await axios.get(`${API_BASE_URL}/api/files/${fileId}/validation-results`);
   return response.data;
 };
 
 export const autoFixIssues = async (fileId: number, issueIds: number[]) => {
-  const response = await axios.post(`${API_BASE_URL}/files/${fileId}/auto-fix`, {
+  const response = await axios.post(`${API_BASE_URL}/api/files/${fileId}/auto-fix`, {
     issue_ids: issueIds
   });
   return response.data;

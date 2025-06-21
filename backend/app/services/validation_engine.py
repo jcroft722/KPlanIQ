@@ -12,7 +12,7 @@ from enum import Enum
 import re
 import logging
 from sqlalchemy.orm import Session
-from app.models.models import FileUpload, ValidationResult, EmployeeData, DataQualityScore
+from ..models.models import FileUpload, ValidationResult, EmployeeData, DataQualityScore
 
 
 logger = logging.getLogger(__name__)

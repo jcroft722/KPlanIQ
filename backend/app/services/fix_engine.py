@@ -10,7 +10,7 @@ from datetime import datetime, date
 from sqlalchemy.orm import Session
 import io
 
-from .models import FileUpload, ValidationResult
+from ..models.models import FileUpload, ValidationResult
 from .validation_engine import DataValidationEngine
 
 logger = logging.getLogger(__name__)

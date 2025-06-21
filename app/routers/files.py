@@ -51,7 +51,8 @@ async def upload_file(
         headers=json.dumps(['SSN', 'EEID', 'FirstName', 'LastName', 'DOB', 'DOH', 'DOT', 
                           'HoursWorked', '%Ownership', 'Officer', 'PiorYearComp', 
                           'EmployeeDeferrals', 'EmployerMatch', 'EmployerProfitSharing', 
-                          'EmployerSHContribuion'])
+                          'EmployerSHContribuion']),
+        has_fixes_applied=False
     )
     
     db.add(file_upload)
