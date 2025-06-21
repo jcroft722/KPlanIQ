@@ -20,6 +20,11 @@ from app.models.models import (
     ValidationRun
 )
 from app.services.validation_engine import DataValidationEngine
+from app.routers import fix_issue_routes
+app.include_router(
+    fix_issue_routes.router,
+    tags=["fix-issues"]
+)
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)

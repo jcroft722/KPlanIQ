@@ -8,6 +8,7 @@ import Dashboard from './components/Dashboard';
 import { ComplianceTestingWorkflow } from './components/ComplianceTestingWorkflow';
 import ValidationResults from './components/ValidationResults';
 import './App.css';
+import FixIssues from './components/FixIssues/FixIssues';
 
 interface DataIssue {
   row: number;
@@ -52,6 +53,9 @@ const App: React.FC = () => {
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  
+  // Fix Issues workflow state
+  const [showFixIssues, setShowFixIssues] = useState<boolean>(false);
 
   // Dashboard state
   const [uploadedFiles, setUploadedFiles] = useState<FileUploadType[]>([]);
@@ -182,6 +186,7 @@ const App: React.FC = () => {
     setUploadedFile(null);
     setColumnMappings({});
     setError(null);
+    setShowFixIssues(false);
   };
 
   const handleComplianceComplete = () => {
@@ -213,7 +218,7 @@ const App: React.FC = () => {
               {[
                 { number: 1, title: 'Upload File' },
                 { number: 2, title: 'Map Columns' },
-                { number: 3, title: 'Validate Data' },
+                { number: 3, title: 'Validate & Fix Data' },
                 { number: 4, title: 'Complete' }
               ].map((step) => (
                 <div key={step.number} className={`step ${
@@ -266,12 +271,29 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {currentStep === 3 && uploadedFile && (
+            {currentStep === 3 && uploadedFile && !showFixIssues && (
               <ValidationResults
                 fileId={uploadedFile.id}
                 onProceedToCompliance={() => {
                   setActiveTab('compliance');
                   setCurrentStep(1);
+                }}
+                onNavigateToFixIssues={() => {
+                  setShowFixIssues(true);
+                }}
+              />
+            )}
+
+            {currentStep === 3 && uploadedFile && showFixIssues && (
+              <FixIssues
+                fileId={uploadedFile.id}
+                onComplete={() => {
+                  setShowFixIssues(false);
+                  setActiveTab('compliance');
+                  setCurrentStep(1);
+                }}
+                onBack={() => {
+                  setShowFixIssues(false);
                 }}
               />
             )}

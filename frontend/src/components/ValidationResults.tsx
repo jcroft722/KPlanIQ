@@ -38,9 +38,10 @@ interface DataQualityScore {
 interface ValidationResultsProps {
   fileId: number;
   onProceedToCompliance: () => void;
+  onNavigateToFixIssues: () => void;
 }
 
-export const ValidationResults: React.FC<ValidationResultsProps> = ({ fileId, onProceedToCompliance }) => {
+export const ValidationResults: React.FC<ValidationResultsProps> = ({ fileId, onProceedToCompliance, onNavigateToFixIssues }) => {
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
   const [qualityScore, setQualityScore] = useState<DataQualityScore | null>(null);
   const [loading, setLoading] = useState(true);
@@ -128,7 +129,7 @@ export const ValidationResults: React.FC<ValidationResultsProps> = ({ fileId, on
   const criticalCount = issues.filter(issue => issue.issue_type === 'critical').length;
   const warningCount = issues.filter(issue => issue.issue_type === 'warning').length;
   const anomalyCount = issues.filter(issue => issue.issue_type === 'info').length;
-
+  
   if (loading) {
     return (
       <div className="loading">
@@ -307,12 +308,12 @@ export const ValidationResults: React.FC<ValidationResultsProps> = ({ fileId, on
               )}
               <button className="btn btn-secondary">📥 Download Error Report</button>
               <button className="btn btn-secondary">💾 Save Progress</button>
-              <button 
-                className={`btn ${canProceedToCompliance ? 'btn-primary' : 'btn-disabled'}`}
-                onClick={onProceedToCompliance}
-                disabled={!canProceedToCompliance}
-              >
-                {canProceedToCompliance ? 'Proceed to Compliance Testing →' : 'Fix Critical Issues First'}
+              <button className={`btn ${canProceedToCompliance ? 'btn-primary' : 'btn-disabled'}`}
+                  onClick={canProceedToCompliance ? onProceedToCompliance : onNavigateToFixIssues}
+                  disabled={false} // Always allow navigation to fix issues
+                >
+                  {canProceedToCompliance ? 'Proceed to Compliance Testing →' : 'Fix Critical Issues →'}
+
               </button>
             </div>
           </div>
